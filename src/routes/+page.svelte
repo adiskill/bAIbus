@@ -1,69 +1,336 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button";
+	import { browser } from "$app/environment";
+	import { createQuery } from "@tanstack/svelte-query";
+	import { onMount } from "svelte";
+
+	import { fetchNearbyStops, type NearbyStopApiItem } from "$lib/api/nearby-stops";
+	import AppBottomNav from "$lib/components/app-bottom-nav.svelte";
+	import AppHeader from "$lib/components/app-header.svelte";
+	import StationCard from "$lib/components/station-card.svelte";
+	import { Card } from "$lib/components/ui/card";
+	import type { StationMode } from "$lib/types/station";
+
+	type NearbyStop = {
+		id: number;
+		name: string;
+		distance: string;
+	};
+
+	type FavoriteStop = {
+		id?: number;
+		name: string;
+		mode: StationMode;
+	};
+
+	const FAVORITE_STOPS_STORAGE_KEY = "favorite-stops";
+	const LOCATION_CACHE_MS = 60_000;
+	const NEARBY_STOPS_CACHE_MS = 60_000;
+
+	let favoriteStops = $state<FavoriteStop[]>([]);
+	let locationRequestMessage = $state("Finding stops near you...");
+
+	function isFavoriteStop(value: unknown): value is FavoriteStop {
+		return (
+			typeof value === "object" &&
+			value !== null &&
+			(!("id" in value) || typeof value.id === "number") &&
+			"name" in value &&
+			typeof value.name === "string" &&
+			"mode" in value &&
+			(value.mode === "bus" || value.mode === "tram" || value.mode === "rail")
+		);
+	}
+
+	function loadFavoriteStops() {
+		const storedValue = localStorage.getItem(FAVORITE_STOPS_STORAGE_KEY);
+
+		if (!storedValue) {
+			return [];
+		}
+
+		try {
+			const parsedValue = JSON.parse(storedValue);
+
+			if (!Array.isArray(parsedValue)) {
+				return [];
+			}
+
+			return parsedValue.filter(isFavoriteStop);
+		} catch {
+			return [];
+		}
+	}
+
+	function persistFavoriteStops(stops: FavoriteStop[]) {
+		localStorage.setItem(FAVORITE_STOPS_STORAGE_KEY, JSON.stringify(stops));
+	}
+
+	function formatDistance(distanceMeters: number) {
+		if (distanceMeters < 1000) {
+			return `${Math.round(distanceMeters)} m`;
+		}
+
+		return `${(distanceMeters / 1000).toFixed(1)} km`;
+	}
+
+	function getStationHref(station: Pick<FavoriteStop, "id" | "name">) {
+		return station.id !== undefined
+			? `/stations/${station.id}`
+			: `/stations/${encodeURIComponent(station.name)}`;
+	}
+
+	function mapStationToNearbyStop(station: NearbyStopApiItem): NearbyStop {
+		return {
+			id: station.id,
+			name: station.name,
+			distance: formatDistance(station.distance)
+		};
+	}
+
+	function getCurrentPosition(options: PositionOptions) {
+		return new Promise<GeolocationPosition>((resolve, reject) => {
+			navigator.geolocation.getCurrentPosition(resolve, reject, options);
+		});
+	}
+
+	async function getUserPosition() {
+		try {
+			locationRequestMessage = "Finding stops near you...";
+
+			return await getCurrentPosition({
+				enableHighAccuracy: false,
+				timeout: 8000,
+				maximumAge: LOCATION_CACHE_MS
+			});
+		} catch (error) {
+			if (
+				error instanceof GeolocationPositionError &&
+				(error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)
+			) {
+				locationRequestMessage = "Retrying location with higher accuracy...";
+
+				return getCurrentPosition({
+					enableHighAccuracy: true,
+					timeout: 20000,
+					maximumAge: 0
+				});
+			}
+
+			throw error;
+		}
+	}
+
+	async function getGeolocationPermissionState() {
+		if (!("permissions" in navigator) || typeof navigator.permissions.query !== "function") {
+			return null;
+		}
+
+		try {
+			const status = await navigator.permissions.query({ name: "geolocation" });
+			return status.state;
+		} catch {
+			return null;
+		}
+	}
+
+	function getLocationErrorMessage(error: GeolocationPositionError) {
+		if (error.code === error.PERMISSION_DENIED) {
+			return "Allow location access in the browser and device settings to see the nearest stops.";
+		}
+
+		if (error.code === error.POSITION_UNAVAILABLE) {
+			return "Your browser could not determine your position. Check device location services and signal.";
+		}
+
+		if (error.code === error.TIMEOUT) {
+			return "Location lookup timed out. Try again with a better signal or a less strict privacy setting.";
+		}
+
+		return "Unable to get your location right now.";
+	}
+
+	function getLocationSupportErrorMessage() {
+		if (!navigator.geolocation) {
+			return "Location is not available in this browser.";
+		}
+
+		if (!window.isSecureContext) {
+			return "Location requires HTTPS or localhost in this browser.";
+		}
+
+		return null;
+	}
+
+	async function getCachedUserPosition() {
+		const supportErrorMessage = getLocationSupportErrorMessage();
+
+		if (supportErrorMessage) {
+			throw new Error(supportErrorMessage);
+		}
+
+		const permissionState = await getGeolocationPermissionState();
+
+		if (permissionState === "denied") {
+			throw new Error(
+				"Location access is blocked in the browser. Enable it in site settings to see nearby stops."
+			);
+		}
+
+		return getUserPosition();
+	}
+
+	const locationQuery = createQuery(() => ({
+		queryKey: ["location"],
+		queryFn: getCachedUserPosition,
+		enabled: browser,
+		staleTime: LOCATION_CACHE_MS,
+		gcTime: LOCATION_CACHE_MS,
+		retry: false
+	}));
+
+	const nearbyStopsQuery = createQuery<NearbyStopApiItem[], Error, NearbyStop[]>(() => {
+		const position = locationQuery.data;
+
+		return {
+			queryKey: [
+				"nearby-stops",
+				position?.coords.latitude ?? null,
+				position?.coords.longitude ?? null
+			],
+			queryFn: ({ signal }) =>
+				fetchNearbyStops(
+					fetch,
+					{
+						latitude: position!.coords.latitude,
+						longitude: position!.coords.longitude
+					},
+					signal
+				),
+			enabled: browser && position !== undefined,
+			select: (stations) => stations.map(mapStationToNearbyStop),
+			staleTime: NEARBY_STOPS_CACHE_MS,
+			gcTime: NEARBY_STOPS_CACHE_MS,
+			retry: false
+		};
+	});
+
+	let nearbyStops = $derived(nearbyStopsQuery.data ?? []);
+
+	let nearbyStopsStatus = $derived.by((): "loading" | "ready" | "error" => {
+		if (locationQuery.isError || nearbyStopsQuery.isError) {
+			return "error";
+		}
+
+		if (nearbyStopsQuery.data !== undefined) {
+			return "ready";
+		}
+
+		return "loading";
+	});
+
+	let nearbyStopsMessage = $derived.by(() => {
+		if (locationQuery.isError) {
+			const error = locationQuery.error;
+
+			return error instanceof GeolocationPositionError
+				? getLocationErrorMessage(error)
+				: error instanceof Error
+					? error.message
+					: "Unable to get your location right now.";
+		}
+
+		if (nearbyStopsQuery.isError) {
+			const error = nearbyStopsQuery.error;
+			return error instanceof Error ? error.message : "Unable to load nearby stops right now.";
+		}
+
+		if (locationQuery.isPending) {
+			return locationRequestMessage;
+		}
+
+		if (nearbyStopsQuery.isPending) {
+			return "Loading nearby stops...";
+		}
+
+		return locationRequestMessage;
+	});
+
+	onMount(() => {
+		favoriteStops = loadFavoriteStops();
+		persistFavoriteStops(favoriteStops);
+	});
 </script>
 
 <svelte:head>
-	<title>aibus</title>
+	<title>Home | AIBus</title>
 	<meta
 		name="description"
-		content="Svelte 5, SvelteKit, Tailwind CSS v4, and shadcn-svelte starter project."
+		content="Transit home screen with nearby stops and favorites."
 	/>
 </svelte:head>
 
-<div
-	class="min-h-screen bg-[radial-gradient(circle_at_top,_color-mix(in_oklab,var(--color-primary)_10%,transparent),transparent_35%),linear-gradient(180deg,var(--color-background),color-mix(in_oklab,var(--color-muted)_45%,var(--color-background)))]"
->
-	<section class="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-16 sm:px-10">
-		<div class="grid w-full gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,420px)] lg:items-end">
-			<div class="space-y-6">
-				<p class="text-sm uppercase tracking-[0.35em] text-muted-foreground">
-					Svelte 5 • SvelteKit • Tailwind v4 • shadcn-svelte
-				</p>
-				<h1 class="max-w-3xl text-5xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
-					Project initialized with the full UI baseline.
-				</h1>
-				<p class="max-w-2xl text-lg leading-8 text-muted-foreground">
-					The app is scaffolded, Tailwind is wired through Vite, and shadcn-svelte is set
-					up with the `nova` preset and a starter `Button` component.
-				</p>
-				<div class="flex flex-wrap gap-3">
-					<Button href="https://svelte.dev/docs/kit">Open SvelteKit docs</Button>
-					<Button href="https://www.shadcn-svelte.com/docs" variant="outline">
-						Open shadcn-svelte docs
-					</Button>
-				</div>
-			</div>
+<div class="bg-slate-50 text-slate-800">
+	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
+		<AppHeader searchLabel="Search" />
 
-			<div class="rounded-[calc(var(--radius-4xl)+2px)] border border-border/70 bg-card/85 p-5 shadow-[0_24px_80px_-32px_color-mix(in_oklab,var(--color-foreground)_18%,transparent)] backdrop-blur">
-				<div class="rounded-3xl border border-border/60 bg-background/90 p-5">
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="text-sm font-medium text-foreground">Starter stack</p>
-							<p class="text-sm text-muted-foreground">Ready for routes, components, and API work</p>
-						</div>
-						<div class="size-3 rounded-full bg-emerald-500"></div>
-					</div>
+		<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+			<section aria-labelledby="nearby-heading">
+				<h2
+					id="nearby-heading"
+					class="text-2xl font-extrabold tracking-tight text-slate-800"
+				>
+					Nearby Stops
+				</h2>
 
-					<div class="mt-6 space-y-3 text-sm">
-						<div class="flex items-center justify-between rounded-2xl bg-muted/70 px-4 py-3">
-							<span class="text-muted-foreground">Framework</span>
-							<span class="font-medium">SvelteKit 2</span>
-						</div>
-						<div class="flex items-center justify-between rounded-2xl bg-muted/70 px-4 py-3">
-							<span class="text-muted-foreground">UI runtime</span>
-							<span class="font-medium">Svelte 5</span>
-						</div>
-						<div class="flex items-center justify-between rounded-2xl bg-muted/70 px-4 py-3">
-							<span class="text-muted-foreground">Styling</span>
-							<span class="font-medium">Tailwind CSS v4</span>
-						</div>
-						<div class="flex items-center justify-between rounded-2xl bg-muted/70 px-4 py-3">
-							<span class="text-muted-foreground">Components</span>
-							<span class="font-medium">shadcn-svelte</span>
-						</div>
-					</div>
+				<div class="mt-4 space-y-2">
+					{#if nearbyStopsStatus === "loading"}
+						<Card class="px-4 py-4">
+							<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+						</Card>
+					{:else if nearbyStopsStatus === "error"}
+						<Card class="px-4 py-4">
+							<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+						</Card>
+					{:else if nearbyStops.length === 0}
+						<Card class="px-4 py-4">
+							<p class="text-sm font-semibold text-slate-600">
+								No nearby stops were found for your location.
+							</p>
+						</Card>
+					{:else}
+						{#each nearbyStops as stop}
+							<StationCard
+								href={getStationHref(stop)}
+								name={stop.name}
+								distance={stop.distance}
+							/>
+						{/each}
+					{/if}
 				</div>
-			</div>
-		</div>
-	</section>
+			</section>
+
+			{#if favoriteStops.length > 0}
+				<section aria-labelledby="favorites-heading" class="mt-8">
+					<h2
+						id="favorites-heading"
+						class="text-2xl font-extrabold tracking-tight text-slate-800"
+					>
+						Favorites
+					</h2>
+
+					<div class="mt-4 space-y-2">
+						{#each favoriteStops as favorite}
+							<StationCard
+								href={getStationHref(favorite)}
+								name={favorite.name}
+								mode={favorite.mode}
+							/>
+						{/each}
+					</div>
+				</section>
+			{/if}
+		</main>
+
+		<AppBottomNav />
+	</div>
 </div>

@@ -67,6 +67,7 @@ Assume users are often:
 - Add small, composable utilities instead of large shared abstraction layers.
 - Keep route files thin when logic can live in `$lib`.
 - Avoid introducing global state until there is a clear need.
+- Do not introduce custom Tailwind utility classes; prefer standard Tailwind utilities, `shadcn-svelte` patterns, and component props or variants for reuse.
 - Preserve the existing SvelteKit and shadcn-svelte patterns already in the repo.
 
 ## Performance Expectations
