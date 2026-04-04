@@ -1,28 +1,27 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import AppBottomNav from "$lib/components/app-bottom-nav.svelte";
 	import AppHeader from "$lib/components/app-header.svelte";
 	import { Card, CardList } from "$lib/components/ui/card";
+	import { getI18n } from "$lib/i18n";
 	import { MapPinned, Route } from "@lucide/svelte";
 
-	const quickActions = [
-		"Plan a route between stops",
-		"Use current location as the start",
-		"Swap origin and destination quickly"
-	];
+	const i18n = $derived(getI18n(page.data.locale));
+	const quickActions = $derived(i18n.messages.navigation.quickActions);
 </script>
 
 <svelte:head>
-	<title>Navigation | AIBus</title>
+	<title>{i18n.messages.navigation.title} | AIBus</title>
 	<meta
 		name="description"
-		content="Transit navigation page for route planning and nearby journey actions."
+		content={i18n.messages.navigation.metaDescription}
 	/>
 </svelte:head>
 
 <div class="bg-slate-50 text-slate-800">
 	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
 		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
-			<AppHeader searchLabel="Search routes" />
+			<AppHeader searchLabel={i18n.messages.header.searchRoutes} />
 
 			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 				<section aria-labelledby="navigation-heading">
@@ -30,7 +29,7 @@
 						id="navigation-heading"
 						class="text-lg font-extrabold tracking-tight text-slate-800"
 					>
-						Navigation
+						{i18n.messages.navigation.heading}
 					</h2>
 
 					<Card class="mt-8 px-5 py-5">
@@ -40,11 +39,10 @@
 							</div>
 							<div>
 								<h3 class="text-xl font-bold tracking-tight text-slate-800">
-									Route planning
+									{i18n.messages.navigation.cardTitle}
 								</h3>
 								<p class="mt-2 leading-7 text-slate-600">
-									This page is ready for trip planning, route suggestions, and turn-by-turn transit
-									flows.
+									{i18n.messages.navigation.cardDescription}
 								</p>
 							</div>
 						</div>

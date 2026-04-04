@@ -2,6 +2,7 @@ import { error } from "@sveltejs/kit";
 
 import { getLiveDepartureBoard } from "$lib/api/idsbk/departures";
 import { getStationById, getStationByName } from "$lib/api/idsbk/stations";
+import { getMessages } from "$lib/i18n";
 
 import type { PageServerLoad } from "./$types";
 
@@ -13,7 +14,8 @@ function parseStationId(stationRef: string) {
 	return Number.parseInt(stationRef, 10);
 }
 
-export const load: PageServerLoad = async ({ fetch, params }) => {
+export const load: PageServerLoad = async ({ fetch, locals, params }) => {
+	const messages = getMessages(locals.locale);
 	const stationId = parseStationId(params.stationRef);
 	const station =
 		stationId === null
@@ -21,7 +23,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 			: await getStationById(fetch, stationId);
 
 	if (!station) {
-		error(404, "Station not found");
+		error(404, messages.errors.stationNotFound);
 	}
 
 	let departureBoard = null;
@@ -33,7 +35,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 		departureError =
 			caughtError instanceof Error
 				? caughtError.message
-				: "Unable to load live departures right now.";
+				: messages.errors.liveDeparturesLoad;
 	}
 
 	return {

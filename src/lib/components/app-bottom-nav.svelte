@@ -6,12 +6,14 @@
 	import { page } from "$app/state";
 	import { House, List, Navigation } from "@lucide/svelte";
 	import { onMount } from "svelte";
+	import { getI18n } from "$lib/i18n";
 
-	const navItems = [
-		{ label: "Home", icon: House, href: "/" },
-		{ label: "Navigation", icon: Navigation, href: "/navigation" },
-		{ label: "Timetables", icon: List, href: "/timetables" }
-	] as const;
+	const i18n = $derived(getI18n(page.data.locale));
+	const navItems = $derived([
+		{ label: i18n.messages.nav.home, icon: House, href: "/" },
+		{ label: i18n.messages.nav.navigation, icon: Navigation, href: "/navigation" },
+		{ label: i18n.messages.nav.timetables, icon: List, href: "/timetables" }
+	] as const);
 
 	function isCurrentPath(pathname: string, href: string) {
 		if (href === "/") {

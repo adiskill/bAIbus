@@ -1,23 +1,29 @@
 import { error, json } from "@sveltejs/kit";
 
-import { getLiveDepartureBoard } from "$lib/api/idsbk/departures";
+import { withIdsbkDebugData, withIdsbkDebugError } from "$lib/api/dev-response";
+import { getLiveDepartureBoardWithDebug } from "$lib/api/idsbk/departures";
+import { getIdsbkDebugInfo } from "$lib/api/idsbk/http";
+import { getMessages } from "$lib/i18n";
+import { serializeLiveDepartureBoard } from "$lib/types/departure";
 
 import type { RequestHandler } from "./$types";
 
-function parseStationId(stationId: string) {
+function parseStationId(stationId: string, invalidStationIdMessage: string) {
 	if (!/^\d+$/.test(stationId)) {
-		throw error(400, "Invalid station ID");
+		throw error(400, invalidStationIdMessage);
 	}
 
 	return Number.parseInt(stationId, 10);
 }
 
-export const GET: RequestHandler = async ({ fetch, params }) => {
-	try {
-		const stationId = parseStationId(params.stationId);
-		const board = await getLiveDepartureBoard(fetch, stationId);
+export const GET: RequestHandler = async ({ fetch, locals, params }) => {
+	const messages = getMessages(locals.locale);
 
-		return json(board, {
+	try {
+		const stationId = parseStationId(params.stationId, messages.errors.invalidStationId);
+		const { board, debug } = await getLiveDepartureBoardWithDebug(fetch, stationId);
+
+		return json(withIdsbkDebugData(serializeLiveDepartureBoard(board), debug), {
 			headers: {
 				"cache-control": "private, max-age=20"
 			}
@@ -30,8 +36,10 @@ export const GET: RequestHandler = async ({ fetch, params }) => {
 		const message =
 			caughtError instanceof Error
 				? caughtError.message
-				: "Unable to load live departures right now.";
+				: messages.errors.liveDeparturesLoad;
 
-		return json({ message }, { status: 502 });
+		return json(withIdsbkDebugError(message, getIdsbkDebugInfo(caughtError)), {
+			status: 502
+		});
 	}
 };

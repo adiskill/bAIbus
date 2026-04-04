@@ -1,8 +1,11 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import favicon from "$lib/assets/favicon.svg";
+	import { getI18n } from "$lib/i18n";
 	import { Search } from "@lucide/svelte";
 
-	let { searchLabel = "Search" }: { searchLabel?: string } = $props();
+	const i18n = $derived(getI18n(page.data.locale));
+	let { searchLabel = i18n.messages.header.search }: { searchLabel?: string } = $props();
 </script>
 
 <header class="sticky top-0 z-50 bg-slate-50/95 backdrop-blur-sm">

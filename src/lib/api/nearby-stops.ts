@@ -1,4 +1,5 @@
 import type { Coordinates } from "$lib/types/station";
+import { getResponseMessage, unwrapDevData } from "$lib/api/dev-response";
 
 export type NearbyStopApiItem = {
 	id: number;
@@ -20,15 +21,15 @@ export async function fetchNearbyStops(
 		body: JSON.stringify(coordinates),
 		signal
 	});
-
-	const data = (await response.json()) as NearbyStopApiItem[] | { message?: string };
+	const payload = (await response.json()) as unknown;
 
 	if (!response.ok) {
 		throw new Error(
-			(typeof data === "object" && !Array.isArray(data) && data.message) ||
-				"Unable to load nearby stops right now."
+			getResponseMessage(payload) || "Unable to load nearby stops right now."
 		);
 	}
+
+	const data = unwrapDevData<NearbyStopApiItem[]>(payload);
 
 	return Array.isArray(data) ? data : [];
 }

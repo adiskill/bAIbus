@@ -1,7 +1,11 @@
-import { env } from "$env/dynamic/private";
-
 import { getCachedJson, setCachedJson } from "$lib/server/valkey";
 import type { Coordinates, NearbyStation, Station } from "$lib/types/station";
+import {
+	IdbskApiError,
+	createIdsbkDebugInfo,
+	fetchIdsbkJson,
+	type IdbskDebugInfo
+} from "$lib/api/idsbk/http";
 
 const BRATISLAVA_CITY_ID = 12;
 const STATIONS_ENDPOINT = `https://api.idsbk.sk/mobile/v3/station/${BRATISLAVA_CITY_ID}/`;
@@ -23,16 +27,6 @@ type IdbskStation = {
 		lon?: number | null;
 	} | null;
 };
-
-function getRequiredEnv(name: "IDSBK_API_KEY" | "IDSBK_SESSION") {
-	const value = env[name];
-
-	if (!value) {
-		throw new Error(`Missing required environment variable: ${name}`);
-	}
-
-	return value;
-}
 
 function isFiniteCoordinate(value: unknown): value is number {
 	return typeof value === "number" && Number.isFinite(value);
@@ -59,35 +53,48 @@ function normalizeStation(rawStation: IdbskStation): Station | null {
 	};
 }
 
-async function fetchStations(fetchFn: typeof fetch): Promise<Station[]> {
+async function fetchStationsWithDebug(
+	fetchFn: typeof fetch
+): Promise<{ debug?: IdbskDebugInfo; stations: Station[] }> {
 	const cachedStations = await getCachedJson<Station[]>(STATION_CACHE_KEY);
 
 	if (cachedStations) {
-		return cachedStations;
+		return {
+			stations: cachedStations,
+			debug: createIdsbkDebugInfo("hit")
+		};
 	}
 
-	const response = await fetchFn(STATIONS_ENDPOINT, {
-		headers: {
-			"X-API-Key": getRequiredEnv("IDSBK_API_KEY"),
-			"X-Session": getRequiredEnv("IDSBK_SESSION")
-		}
-	});
+	const { data, debug, ok, status } = await fetchIdsbkJson(fetchFn, STATIONS_ENDPOINT);
+	const debugInfo = createIdsbkDebugInfo("miss", debug);
 
-	if (!response.ok) {
-		throw new Error(`IDS BK station request failed with ${response.status}`);
+	if (!ok) {
+		throw new IdbskApiError(`IDS BK station request failed with ${status}`, debugInfo);
 	}
 
-	const data = (await response.json()) as IdbskStationResponse;
+	const payload = data as IdbskStationResponse;
 
-	if (!Array.isArray(data.stations)) {
-		throw new Error("IDS BK station response did not include a stations array");
+	if (!Array.isArray(payload.stations)) {
+		throw new IdbskApiError(
+			"IDS BK station response did not include a stations array",
+			debugInfo
+		);
 	}
 
-	const stations = data.stations
+	const stations = payload.stations
 		.map(normalizeStation)
 		.filter((station): station is Station => station !== null);
 
 	await setCachedJson(STATION_CACHE_KEY, stations, STATION_CACHE_TTL_SECONDS);
+
+	return {
+		stations,
+		debug: debugInfo
+	};
+}
+
+async function fetchStations(fetchFn: typeof fetch): Promise<Station[]> {
+	const { stations } = await fetchStationsWithDebug(fetchFn);
 
 	return stations;
 }
@@ -134,7 +141,7 @@ export async function getClosestStations(
 	origin: Coordinates,
 	limit = 5
 ): Promise<NearbyStation[]> {
-	const stations = await fetchStations(fetchFn);
+	const { stations } = await fetchStationsWithDebug(fetchFn);
 
 	return stations
 		.map((station) => ({
@@ -143,4 +150,23 @@ export async function getClosestStations(
 		}))
 		.sort((left, right) => left.distanceMeters - right.distanceMeters)
 		.slice(0, limit);
+}
+
+export async function getClosestStationsWithDebug(
+	fetchFn: typeof fetch,
+	origin: Coordinates,
+	limit = 5
+): Promise<{ debug?: IdbskDebugInfo; stations: NearbyStation[] }> {
+	const { stations, debug } = await fetchStationsWithDebug(fetchFn);
+
+	return {
+		stations: stations
+			.map((station) => ({
+				...station,
+				distanceMeters: calculateDistanceMeters(origin, station)
+			}))
+			.sort((left, right) => left.distanceMeters - right.distanceMeters)
+			.slice(0, limit),
+		debug
+	};
 }

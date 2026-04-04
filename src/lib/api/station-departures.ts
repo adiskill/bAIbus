@@ -1,4 +1,5 @@
-import type { LiveDepartureBoard } from "$lib/types/departure";
+import { parseLiveDepartureBoard, type LiveDepartureApiResponse, type LiveDepartureBoard } from "$lib/types/departure";
+import { getResponseMessage, unwrapDevData } from "$lib/api/dev-response";
 
 type StationDeparturesError = {
 	message?: string;
@@ -13,14 +14,15 @@ export async function fetchStationDepartures(
 		cache: "no-store",
 		signal
 	});
-	const data = (await response.json()) as LiveDepartureBoard | StationDeparturesError;
+	const payload = (await response.json()) as unknown;
 
 	if (!response.ok) {
 		throw new Error(
-			(typeof data === "object" && data !== null && "message" in data && data.message) ||
-				"Unable to load live departures right now."
+			getResponseMessage(payload) || "Unable to load live departures right now."
 		);
 	}
 
-	return data as LiveDepartureBoard;
+	const data = unwrapDevData<LiveDepartureApiResponse>(payload);
+
+	return parseLiveDepartureBoard(data);
 }

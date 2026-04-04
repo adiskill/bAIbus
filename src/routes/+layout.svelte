@@ -1,4 +1,5 @@
 	<script lang="ts">
+		import { page } from "$app/state";
 		import { browser } from "$app/environment";
 		import { onNavigate } from "$app/navigation";
 		import { QueryClientProvider } from "@tanstack/svelte-query";
@@ -30,6 +31,14 @@
 
 		let { children } = $props();
 		const queryClient = createAppQueryClient();
+
+		$effect(() => {
+			if (!browser) {
+				return;
+			}
+
+			document.documentElement.lang = page.data.locale;
+		});
 
 		function isStationPath(pathname: string) {
 			return pathname.startsWith("/stations/");

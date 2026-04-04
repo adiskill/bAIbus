@@ -1,4 +1,5 @@
-<script lang="ts">
+	<script lang="ts">
+	import { page } from "$app/state";
 	import { browser } from "$app/environment";
 	import { createQuery } from "@tanstack/svelte-query";
 	import { onMount } from "svelte";
@@ -8,6 +9,7 @@
 	import AppHeader from "$lib/components/app-header.svelte";
 	import StationCard from "$lib/components/station-card.svelte";
 	import { Card, CardList } from "$lib/components/ui/card";
+	import { getI18n } from "$lib/i18n";
 	import {
 		loadFavoriteStations,
 		persistFavoriteStations,
@@ -22,16 +24,28 @@
 
 	const LOCATION_CACHE_MS = 60_000;
 	const NEARBY_STOPS_CACHE_MS = 60_000;
+	const i18n = $derived(getI18n(page.data.locale));
+	const kilometerFormatter = $derived(
+		new Intl.NumberFormat(i18n.intlLocale, {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1
+		})
+	);
 
 	let favoriteStops = $state<FavoriteStation[]>([]);
-	let locationRequestMessage = $state("Finding stops near you...");
+	let locationRequestPhase = $state<"finding" | "retrying">("finding");
+	let locationRequestMessage = $derived(
+		locationRequestPhase === "retrying"
+			? i18n.messages.home.retryingLocation
+			: i18n.messages.home.findingStops
+	);
 
 	function formatDistance(distanceMeters: number) {
 		if (distanceMeters < 1000) {
 			return `${Math.round(distanceMeters)} m`;
 		}
 
-		return `${(distanceMeters / 1000).toFixed(1)} km`;
+		return `${kilometerFormatter.format(distanceMeters / 1000)} km`;
 	}
 
 	function getStationHref(station: Pick<FavoriteStation, "id">) {
@@ -54,7 +68,7 @@
 
 	async function getUserPosition() {
 		try {
-			locationRequestMessage = "Finding stops near you...";
+			locationRequestPhase = "finding";
 
 			return await getCurrentPosition({
 				enableHighAccuracy: false,
@@ -66,7 +80,7 @@
 				error instanceof GeolocationPositionError &&
 				(error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)
 			) {
-				locationRequestMessage = "Retrying location with higher accuracy...";
+				locationRequestPhase = "retrying";
 
 				return getCurrentPosition({
 					enableHighAccuracy: true,
@@ -94,27 +108,27 @@
 
 	function getLocationErrorMessage(error: GeolocationPositionError) {
 		if (error.code === error.PERMISSION_DENIED) {
-			return "Allow location access in the browser and device settings to see the nearest stops.";
+			return i18n.messages.home.locationPermissionDenied;
 		}
 
 		if (error.code === error.POSITION_UNAVAILABLE) {
-			return "Your browser could not determine your position. Check device location services and signal.";
+			return i18n.messages.home.locationPositionUnavailable;
 		}
 
 		if (error.code === error.TIMEOUT) {
-			return "Location lookup timed out. Try again with a better signal or a less strict privacy setting.";
+			return i18n.messages.home.locationTimeout;
 		}
 
-		return "Unable to get your location right now.";
+		return i18n.messages.home.locationUnavailable;
 	}
 
 	function getLocationSupportErrorMessage() {
 		if (!navigator.geolocation) {
-			return "Location is not available in this browser.";
+			return i18n.messages.home.locationNotAvailable;
 		}
 
 		if (!window.isSecureContext) {
-			return "Location requires HTTPS or localhost in this browser.";
+			return i18n.messages.home.locationRequiresSecureContext;
 		}
 
 		return null;
@@ -130,9 +144,7 @@
 		const permissionState = await getGeolocationPermissionState();
 
 		if (permissionState === "denied") {
-			throw new Error(
-				"Location access is blocked in the browser. Enable it in site settings to see nearby stops."
-			);
+			throw new Error(i18n.messages.home.locationBlocked);
 		}
 
 		return getUserPosition();
@@ -195,12 +207,14 @@
 				? getLocationErrorMessage(error)
 				: error instanceof Error
 					? error.message
-					: "Unable to get your location right now.";
+					: i18n.messages.home.locationUnavailable;
 		}
 
 		if (nearbyStopsQuery.isError) {
 			const error = nearbyStopsQuery.error;
-			return error instanceof Error ? error.message : "Unable to load nearby stops right now.";
+			return error instanceof Error
+				? error.message
+				: i18n.messages.home.nearbyStopsLoadError;
 		}
 
 		if (locationQuery.isPending) {
@@ -208,7 +222,7 @@
 		}
 
 		if (nearbyStopsQuery.isPending) {
-			return "Loading nearby stops...";
+			return i18n.messages.home.loadingNearbyStops;
 		}
 
 		return locationRequestMessage;
@@ -221,17 +235,17 @@
 </script>
 
 <svelte:head>
-	<title>Home | AIBus</title>
+	<title>{i18n.messages.home.title} | AIBus</title>
 	<meta
 		name="description"
-		content="Transit home screen with nearby stops and favorites."
+		content={i18n.messages.home.metaDescription}
 	/>
 </svelte:head>
 
 <div class="bg-slate-50 text-slate-800">
 	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
 		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
-			<AppHeader searchLabel="Search" />
+			<AppHeader searchLabel={i18n.messages.header.search} />
 
 			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 				<section aria-labelledby="nearby-heading">
@@ -239,7 +253,7 @@
 						id="nearby-heading"
 						class="text-2xl font-extrabold tracking-tight text-slate-800"
 					>
-						Nearby Stops
+						{i18n.messages.home.nearbyHeading}
 					</h2>
 
 					<CardList class="mt-4">
@@ -254,7 +268,7 @@
 						{:else if nearbyStops.length === 0}
 							<Card>
 								<p class="text-sm font-semibold text-slate-600">
-									No nearby stops were found for your location.
+									{i18n.messages.home.noNearbyStops}
 								</p>
 							</Card>
 						{:else}
@@ -275,7 +289,7 @@
 							id="favorites-heading"
 							class="text-2xl font-extrabold tracking-tight text-slate-800"
 						>
-							Favorites
+							{i18n.messages.home.favoritesHeading}
 						</h2>
 
 						<CardList class="mt-4">

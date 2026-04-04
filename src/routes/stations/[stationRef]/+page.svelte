@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import { Bookmark, ChevronLeft, MapPin } from "@lucide/svelte";
 	import { onMount } from "svelte";
 
@@ -6,6 +7,7 @@
 	import AppBottomNav from "$lib/components/app-bottom-nav.svelte";
 	import { IconAction } from "$lib/components/ui/icon-action";
 	import { Card, CardList } from "$lib/components/ui/card";
+	import { getI18n } from "$lib/i18n";
 	import {
 		isFavoriteStationId,
 		loadFavoriteStations,
@@ -18,12 +20,15 @@
 	import type { PageData } from "./$types";
 
 	const REFRESH_INTERVAL_MS = 20_000;
-	const fetchedAtFormatter = new Intl.DateTimeFormat("sk-SK", {
-		timeZone: "Europe/Bratislava",
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit"
-	});
+	const i18n = $derived(getI18n(page.data.locale));
+	const fetchedAtFormatter = $derived(
+		new Intl.DateTimeFormat(i18n.intlLocale, {
+			timeZone: "Europe/Bratislava",
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit"
+		})
+	);
 
 	let { data }: { data: PageData } = $props();
 	let favoriteStations = $state<FavoriteStation[]>([]);
@@ -31,19 +36,21 @@
 	let departureErrorMessage = $state<string | null>(null);
 	let isRefreshingDepartures = $state(false);
 	let activeRefreshController = $state<AbortController | null>(null);
+	let lastUpdatedAt = $state<Date | null>(null);
 
 	let stationMapHref = $derived(
 		`https://www.openstreetmap.org/?mlat=${data.station.latitude}&mlon=${data.station.longitude}#map=18/${data.station.latitude}/${data.station.longitude}`
 	);
 	let isFavorite = $derived(isFavoriteStationId(favoriteStations, data.station.id));
-	let departures = $derived(departureBoard?.departures ?? []);
-	let lastFetchedAt = $derived(
-		departureBoard ? fetchedAtFormatter.format(new Date(departureBoard.fetchedAt)) : null
+	let departures = $derived(departureBoard ?? []);
+	let formattedLastUpdatedAt = $derived(
+		lastUpdatedAt ? fetchedAtFormatter.format(lastUpdatedAt) : null
 	);
 
 	$effect(() => {
 		departureBoard = data.departureBoard;
 		departureErrorMessage = data.departureError;
+		lastUpdatedAt = data.departureBoard ? new Date() : null;
 	});
 
 	function getLineBadgeClass(routeType: number | null) {
@@ -64,11 +71,7 @@
 
 	function getStatusClass(departure: LiveDeparture) {
 		if (departure.delayMinutes > 0) {
-			return "text-amber-600";
-		}
-
-		if (departure.delayMinutes < 0) {
-			return "text-sky-600";
+			return "text-rose-600";
 		}
 
 		if (departure.isLive) {
@@ -76,6 +79,18 @@
 		}
 
 		return "text-slate-500";
+	}
+
+	function getStatusLabel(departure: LiveDeparture) {
+		if (!departure.isLive) {
+			return i18n.messages.station.scheduled;
+		}
+
+		if (departure.delayMinutes > 0) {
+			return `+${departure.delayMinutes} ${i18n.messages.station.minuteUnit}`;
+		}
+
+		return i18n.messages.station.onTime;
 	}
 
 	async function refreshDepartures() {
@@ -91,6 +106,7 @@
 		try {
 			departureBoard = await fetchStationDepartures(fetch, data.station.id, refreshController.signal);
 			departureErrorMessage = null;
+			lastUpdatedAt = new Date();
 		} catch (caughtError) {
 			if (refreshController.signal.aborted) {
 				return;
@@ -99,7 +115,7 @@
 			departureErrorMessage =
 				caughtError instanceof Error
 					? caughtError.message
-					: "Unable to refresh live departures right now.";
+					: i18n.messages.station.refreshError;
 		} finally {
 			if (activeRefreshController === refreshController) {
 				activeRefreshController = null;
@@ -139,7 +155,7 @@
 	<title>{data.station.name} | AIBus</title>
 	<meta
 		name="description"
-		content={`Station detail for ${data.station.name} in ${data.station.city}.`}
+		content={i18n.messages.station.metaDescription(data.station.name, data.station.city)}
 	/>
 </svelte:head>
 
@@ -158,7 +174,7 @@
 								<a
 									href="/"
 									class="-ml-1 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
-									aria-label="Back to home"
+									aria-label={i18n.messages.station.backToHome}
 								>
 									<ChevronLeft class="size-6" strokeWidth={2.4} />
 								</a>
@@ -174,7 +190,9 @@
 
 						<div class="flex shrink-0 items-center gap-2">
 							<IconAction
-								aria-label={isFavorite ? "Remove station from favourites" : "Add station to favourites"}
+								aria-label={isFavorite
+									? i18n.messages.station.removeFavorite
+									: i18n.messages.station.addFavorite}
 								aria-pressed={isFavorite}
 								onclick={handleFavoriteToggle}
 							>
@@ -188,7 +206,7 @@
 								href={stationMapHref}
 								target="_blank"
 								rel="noreferrer"
-								aria-label="Open station on map"
+								aria-label={i18n.messages.station.openOnMap}
 							>
 								<MapPin class="size-5" strokeWidth={2.2} />
 							</IconAction>
@@ -202,17 +220,19 @@
 							id="upcoming-heading"
 							class="text-xs font-extrabold uppercase tracking-widest text-slate-500"
 						>
-							Upcoming Departures
+							{i18n.messages.station.upcomingHeading}
 						</h2>
 						<div class="text-right">
 							<p class="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-								{isRefreshingDepartures ? "Refreshing" : "Live IDS BK"}
+								{isRefreshingDepartures
+									? i18n.messages.station.refreshing
+									: i18n.messages.station.liveSource}
 							</p>
 							<p class="mt-1 text-sm font-medium text-slate-500">
-								{#if lastFetchedAt}
-									Updated {lastFetchedAt}
+								{#if formattedLastUpdatedAt}
+									{i18n.messages.station.updatedAt(formattedLastUpdatedAt)}
 								{:else}
-									Waiting for data
+									{i18n.messages.station.waitingForData}
 								{/if}
 							</p>
 						</div>
@@ -223,7 +243,7 @@
 							<Card>
 								<p class="text-sm font-semibold text-slate-600">
 									{departureErrorMessage ??
-										"No live departures are available for this station right now."}
+										i18n.messages.station.noLiveDepartures}
 								</p>
 							</Card>
 						{:else}
@@ -247,11 +267,7 @@
 													class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold uppercase tracking-widest text-slate-500"
 												>
 													{#if departure.platform}
-														<span>{departure.platform}</span>
-													{/if}
-													<span>{departure.predictedDeparture}</span>
-													{#if departure.delayMinutes !== 0}
-														<span>Sched. {departure.scheduledDeparture}</span>
+														<span>{i18n.messages.station.platformLabel(departure.platform)}</span>
 													{/if}
 												</div>
 											</div>
@@ -259,20 +275,22 @@
 
 										<div class="shrink-0 text-right">
 											{#if departure.minutesUntilDeparture === 0}
-												<p class="text-3xl font-extrabold tracking-tight text-blue-600">Now</p>
+												<p class="text-3xl font-extrabold tracking-tight text-blue-600">
+													{i18n.messages.station.now}
+												</p>
 											{:else}
 												<p class="text-3xl font-extrabold tracking-tight text-slate-800">
 													{departure.minutesUntilDeparture}<span
 														class="ml-1 text-sm font-medium"
 													>
-														min
+														{i18n.messages.station.minuteUnit}
 													</span>
 												</p>
 											{/if}
 											<p
 												class={`-mt-1 text-xs font-extrabold uppercase tracking-wider ${getStatusClass(departure)}`}
 											>
-												{departure.statusLabel}
+												{getStatusLabel(departure)}
 											</p>
 										</div>
 									</div>
@@ -280,18 +298,6 @@
 							{/each}
 						{/if}
 					</CardList>
-
-					<div class="mt-6 rounded-3xl bg-slate-100/80 px-4 py-4 text-sm text-slate-600">
-						{#if lastFetchedAt}
-							<p class="font-semibold text-slate-700">Last updated at {lastFetchedAt}.</p>
-						{:else}
-							<p class="font-semibold text-slate-700">Live departures are waiting for data.</p>
-						{/if}
-						<p class="mt-1">Departures refresh every 20 seconds.</p>
-						{#if departureErrorMessage && departures.length > 0}
-							<p class="mt-2 text-amber-700">{departureErrorMessage}</p>
-						{/if}
-					</div>
 				</section>
 			</main>
 		</div>
