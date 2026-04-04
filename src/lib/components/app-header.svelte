@@ -7,7 +7,8 @@
 
 <header class="sticky top-0 z-50 bg-slate-50/95 backdrop-blur-sm">
 	<div
-		class="flex items-center justify-between px-6 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]"
+		class="flex items-center justify-between px-6 pb-4"
+		style:padding-top={"calc(env(safe-area-inset-top) + 1rem)"}
 	>
 		<div class="flex items-center gap-4">
 			<img src={favicon} alt="AIBus" class="size-8 rounded-md object-contain" />

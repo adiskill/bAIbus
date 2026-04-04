@@ -61,7 +61,7 @@
 >
 	<Card
 		class={cn(
-			"px-4 py-4 transition-colors hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100",
+			"transition-colors active:bg-slate-100",
 			className
 		)}
 	>

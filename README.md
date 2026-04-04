@@ -15,6 +15,15 @@ Svelte 5 starter project using SvelteKit, Tailwind CSS v4, and `shadcn-svelte`.
 bun dev
 ```
 
+Set the required environment variables in `.env`:
+
+```sh
+IDSBK_API_KEY=your-idsbk-api-key
+IDSBK_SESSION=your-idsbk-session
+VALKEY_URL=redis://localhost:6379
+VALKEY_PREFIX=aibus
+```
+
 Open the app in a browser with:
 
 ```sh

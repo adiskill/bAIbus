@@ -7,8 +7,12 @@
 	import AppBottomNav from "$lib/components/app-bottom-nav.svelte";
 	import AppHeader from "$lib/components/app-header.svelte";
 	import StationCard from "$lib/components/station-card.svelte";
-	import { Card } from "$lib/components/ui/card";
-	import type { StationMode } from "$lib/types/station";
+	import { Card, CardList } from "$lib/components/ui/card";
+	import {
+		loadFavoriteStations,
+		persistFavoriteStations,
+		type FavoriteStation
+	} from "$lib/station-favorites";
 
 	type NearbyStop = {
 		id: number;
@@ -16,54 +20,11 @@
 		distance: string;
 	};
 
-	type FavoriteStop = {
-		id?: number;
-		name: string;
-		mode: StationMode;
-	};
-
-	const FAVORITE_STOPS_STORAGE_KEY = "favorite-stops";
 	const LOCATION_CACHE_MS = 60_000;
 	const NEARBY_STOPS_CACHE_MS = 60_000;
 
-	let favoriteStops = $state<FavoriteStop[]>([]);
+	let favoriteStops = $state<FavoriteStation[]>([]);
 	let locationRequestMessage = $state("Finding stops near you...");
-
-	function isFavoriteStop(value: unknown): value is FavoriteStop {
-		return (
-			typeof value === "object" &&
-			value !== null &&
-			(!("id" in value) || typeof value.id === "number") &&
-			"name" in value &&
-			typeof value.name === "string" &&
-			"mode" in value &&
-			(value.mode === "bus" || value.mode === "tram" || value.mode === "rail")
-		);
-	}
-
-	function loadFavoriteStops() {
-		const storedValue = localStorage.getItem(FAVORITE_STOPS_STORAGE_KEY);
-
-		if (!storedValue) {
-			return [];
-		}
-
-		try {
-			const parsedValue = JSON.parse(storedValue);
-
-			if (!Array.isArray(parsedValue)) {
-				return [];
-			}
-
-			return parsedValue.filter(isFavoriteStop);
-		} catch {
-			return [];
-		}
-	}
-
-	function persistFavoriteStops(stops: FavoriteStop[]) {
-		localStorage.setItem(FAVORITE_STOPS_STORAGE_KEY, JSON.stringify(stops));
-	}
 
 	function formatDistance(distanceMeters: number) {
 		if (distanceMeters < 1000) {
@@ -73,10 +34,8 @@
 		return `${(distanceMeters / 1000).toFixed(1)} km`;
 	}
 
-	function getStationHref(station: Pick<FavoriteStop, "id" | "name">) {
-		return station.id !== undefined
-			? `/stations/${station.id}`
-			: `/stations/${encodeURIComponent(station.name)}`;
+	function getStationHref(station: Pick<FavoriteStation, "id">) {
+		return `/stations/${station.id}`;
 	}
 
 	function mapStationToNearbyStop(station: NearbyStopApiItem): NearbyStop {
@@ -256,8 +215,8 @@
 	});
 
 	onMount(() => {
-		favoriteStops = loadFavoriteStops();
-		persistFavoriteStops(favoriteStops);
+		favoriteStops = loadFavoriteStations();
+		persistFavoriteStations(favoriteStops);
 	});
 </script>
 
@@ -271,65 +230,66 @@
 
 <div class="bg-slate-50 text-slate-800">
 	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
-		<AppHeader searchLabel="Search" />
+		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
+			<AppHeader searchLabel="Search" />
 
-		<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-			<section aria-labelledby="nearby-heading">
-				<h2
-					id="nearby-heading"
-					class="text-2xl font-extrabold tracking-tight text-slate-800"
-				>
-					Nearby Stops
-				</h2>
-
-				<div class="mt-4 space-y-2">
-					{#if nearbyStopsStatus === "loading"}
-						<Card class="px-4 py-4">
-							<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
-						</Card>
-					{:else if nearbyStopsStatus === "error"}
-						<Card class="px-4 py-4">
-							<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
-						</Card>
-					{:else if nearbyStops.length === 0}
-						<Card class="px-4 py-4">
-							<p class="text-sm font-semibold text-slate-600">
-								No nearby stops were found for your location.
-							</p>
-						</Card>
-					{:else}
-						{#each nearbyStops as stop}
-							<StationCard
-								href={getStationHref(stop)}
-								name={stop.name}
-								distance={stop.distance}
-							/>
-						{/each}
-					{/if}
-				</div>
-			</section>
-
-			{#if favoriteStops.length > 0}
-				<section aria-labelledby="favorites-heading" class="mt-8">
+			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+				<section aria-labelledby="nearby-heading">
 					<h2
-						id="favorites-heading"
+						id="nearby-heading"
 						class="text-2xl font-extrabold tracking-tight text-slate-800"
 					>
-						Favorites
+						Nearby Stops
 					</h2>
 
-					<div class="mt-4 space-y-2">
-						{#each favoriteStops as favorite}
-							<StationCard
-								href={getStationHref(favorite)}
-								name={favorite.name}
-								mode={favorite.mode}
-							/>
-						{/each}
-					</div>
+					<CardList class="mt-4">
+						{#if nearbyStopsStatus === "loading"}
+							<Card>
+								<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+							</Card>
+						{:else if nearbyStopsStatus === "error"}
+							<Card>
+								<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+							</Card>
+						{:else if nearbyStops.length === 0}
+							<Card>
+								<p class="text-sm font-semibold text-slate-600">
+									No nearby stops were found for your location.
+								</p>
+							</Card>
+						{:else}
+							{#each nearbyStops as stop}
+								<StationCard
+									href={getStationHref(stop)}
+									name={stop.name}
+									distance={stop.distance}
+								/>
+							{/each}
+						{/if}
+					</CardList>
 				</section>
-			{/if}
-		</main>
+
+				{#if favoriteStops.length > 0}
+					<section aria-labelledby="favorites-heading" class="mt-8">
+						<h2
+							id="favorites-heading"
+							class="text-2xl font-extrabold tracking-tight text-slate-800"
+						>
+							Favorites
+						</h2>
+
+						<CardList class="mt-4">
+							{#each favoriteStops as favorite}
+								<StationCard
+									href={getStationHref(favorite)}
+									name={favorite.name}
+								/>
+							{/each}
+						</CardList>
+					</section>
+				{/if}
+			</main>
+		</div>
 
 		<AppBottomNav />
 	</div>

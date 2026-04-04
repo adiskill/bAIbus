@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 
+import { getLiveDepartureBoard } from "$lib/api/idsbk/departures";
 import { getStationById, getStationByName } from "$lib/api/idsbk/stations";
 
 import type { PageServerLoad } from "./$types";
@@ -23,5 +24,21 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 		error(404, "Station not found");
 	}
 
-	return { station };
+	let departureBoard = null;
+	let departureError: string | null = null;
+
+	try {
+		departureBoard = await getLiveDepartureBoard(fetch, station.id);
+	} catch (caughtError) {
+		departureError =
+			caughtError instanceof Error
+				? caughtError.message
+				: "Unable to load live departures right now.";
+	}
+
+	return {
+		station,
+		departureBoard,
+		departureError
+	};
 };

@@ -5,6 +5,9 @@
 
 @theme inline {
 	--font-sans: 'Inter Variable', sans-serif;
+	--page-transition-distance: 1.5rem;
+	--page-transition-duration: 240ms;
+	--page-transition-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -17,5 +20,133 @@
 	}
 	html {
 		@apply font-sans;
+	}
+}
+
+@supports (view-transition-name: none) {
+	.route-transition-shell {
+		view-transition-name: app-shell;
+	}
+
+	::view-transition-group(app-shell) {
+		animation-duration: var(--page-transition-duration);
+		animation-timing-function: var(--page-transition-ease);
+	}
+
+	::view-transition-image-pair(app-shell) {
+		isolation: isolate;
+	}
+
+	::view-transition-old(app-shell),
+	::view-transition-new(app-shell) {
+		height: 100%;
+		animation-duration: var(--page-transition-duration);
+		animation-fill-mode: both;
+		animation-timing-function: var(--page-transition-ease);
+	}
+
+	:root[data-route-transition="forward"]::view-transition-old(app-shell) {
+		animation-name: page-slide-out-forward;
+	}
+
+	:root[data-route-transition="forward"]::view-transition-new(app-shell) {
+		animation-name: page-slide-in-forward;
+	}
+
+	:root[data-route-transition="back"]::view-transition-old(app-shell) {
+		animation-name: page-slide-out-back;
+	}
+
+	:root[data-route-transition="back"]::view-transition-new(app-shell) {
+		animation-name: page-slide-in-back;
+	}
+
+	:root[data-route-transition="fade"]::view-transition-old(app-shell) {
+		animation-name: page-fade-out;
+	}
+
+	:root[data-route-transition="fade"]::view-transition-new(app-shell) {
+		animation-name: page-fade-in;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	@supports (view-transition-name: none) {
+		::view-transition-old(app-shell),
+		::view-transition-new(app-shell) {
+			animation-duration: 1ms;
+		}
+	}
+}
+
+@keyframes page-slide-out-forward {
+	from {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateX(calc(var(--page-transition-distance) * -0.65)) scale(0.985);
+	}
+}
+
+@keyframes page-slide-in-forward {
+	from {
+		opacity: 0;
+		transform: translateX(var(--page-transition-distance)) scale(0.985);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+	}
+}
+
+@keyframes page-slide-out-back {
+	from {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateX(calc(var(--page-transition-distance) * 0.65)) scale(0.985);
+	}
+}
+
+@keyframes page-slide-in-back {
+	from {
+		opacity: 0;
+		transform: translateX(calc(var(--page-transition-distance) * -1)) scale(0.985);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+	}
+}
+
+@keyframes page-fade-out {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	to {
+		opacity: 0;
+		transform: scale(0.99);
+	}
+}
+
+@keyframes page-fade-in {
+	from {
+		opacity: 0;
+		transform: scale(1.01);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
 	}
 }

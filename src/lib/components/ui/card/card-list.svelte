@@ -2,7 +2,7 @@
 	import { cn, type WithElementRef } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
 
-	export type CardProps = WithElementRef<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
+	export type CardListProps = WithElementRef<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 </script>
 
 <script lang="ts">
@@ -11,16 +11,13 @@
 		ref = $bindable(null),
 		children,
 		...restProps
-	}: CardProps = $props();
+	}: CardListProps = $props();
 </script>
 
 <div
 	bind:this={ref}
-	data-slot="card"
-	class={cn(
-		"rounded-xl border border-slate-200 bg-white px-4 py-4 text-slate-800 shadow-sm",
-		className
-	)}
+	data-slot="card-list"
+	class={cn("space-y-2", className)}
 	{...restProps}
 >
 	{@render children?.()}

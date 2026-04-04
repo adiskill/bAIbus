@@ -1,10 +1,12 @@
 import { env } from "$env/dynamic/private";
 
+import { getCachedJson, setCachedJson } from "$lib/server/valkey";
 import type { Coordinates, NearbyStation, Station } from "$lib/types/station";
 
 const BRATISLAVA_CITY_ID = 12;
 const STATIONS_ENDPOINT = `https://api.idsbk.sk/mobile/v3/station/${BRATISLAVA_CITY_ID}/`;
-const STATION_CACHE_TTL_MS = 5 * 60 * 1000;
+const STATION_CACHE_KEY = `idsbk:stations:v1:${BRATISLAVA_CITY_ID}`;
+const STATION_CACHE_TTL_SECONDS = 12 * 60 * 60;
 const EARTH_RADIUS_METERS = 6_371_000;
 
 type IdbskStationResponse = {
@@ -21,13 +23,6 @@ type IdbskStation = {
 		lon?: number | null;
 	} | null;
 };
-
-type StationCache = {
-	expiresAt: number;
-	stations: Station[];
-};
-
-let stationCache: StationCache | null = null;
 
 function getRequiredEnv(name: "IDSBK_API_KEY" | "IDSBK_SESSION") {
 	const value = env[name];
@@ -65,8 +60,10 @@ function normalizeStation(rawStation: IdbskStation): Station | null {
 }
 
 async function fetchStations(fetchFn: typeof fetch): Promise<Station[]> {
-	if (stationCache && stationCache.expiresAt > Date.now()) {
-		return stationCache.stations;
+	const cachedStations = await getCachedJson<Station[]>(STATION_CACHE_KEY);
+
+	if (cachedStations) {
+		return cachedStations;
 	}
 
 	const response = await fetchFn(STATIONS_ENDPOINT, {
@@ -90,10 +87,7 @@ async function fetchStations(fetchFn: typeof fetch): Promise<Station[]> {
 		.map(normalizeStation)
 		.filter((station): station is Station => station !== null);
 
-	stationCache = {
-		expiresAt: Date.now() + STATION_CACHE_TTL_MS,
-		stations
-	};
+	await setCachedJson(STATION_CACHE_KEY, stations, STATION_CACHE_TTL_SECONDS);
 
 	return stations;
 }
