@@ -17,7 +17,15 @@
 
 	function isCurrentPath(pathname: string, href: string) {
 		if (href === "/") {
-			return pathname === "/" || pathname.startsWith("/stations/");
+			return (
+				pathname === "/" ||
+				pathname.startsWith("/stations/") ||
+				pathname.startsWith("/trips/")
+			);
+		}
+
+		if (href === "/navigation") {
+			return pathname === href;
 		}
 
 		return pathname === href;
@@ -57,9 +65,9 @@
 	});
 </script>
 
-<nav class="sticky bottom-0 z-50 mt-auto bg-slate-50/95 backdrop-blur-sm">
+<nav class="sticky bottom-0 z-50 mt-auto bg-slate-50/95 backdrop-blur-sm dark:bg-slate-950/95">
 	<div
-		class="rounded-t-3xl bg-white px-6 pt-5 shadow-lg shadow-slate-900/5"
+		class="rounded-t-3xl bg-white px-6 pt-5 shadow-lg shadow-slate-900/5 dark:bg-slate-900 dark:shadow-black/30"
 		style:padding-bottom={"calc(env(safe-area-inset-bottom) + 1.5rem)"}
 	>
 		<div
@@ -67,7 +75,7 @@
 			style={`--nav-gap: 0.5rem; --nav-item-count: ${navItems.length}; --nav-index: ${indicatorIndex};`}
 		>
 			<span
-				class={`nav-active-indicator pointer-events-none absolute inset-y-0 left-0 rounded-2xl bg-blue-100 ${
+				class={`nav-active-indicator pointer-events-none absolute inset-y-0 left-0 rounded-2xl bg-blue-100 dark:bg-blue-500/20 ${
 					indicatorReady ? "nav-active-indicator-ready" : ""
 				}`}
 				aria-hidden="true"
@@ -78,20 +86,26 @@
 				<a
 					href={item.href}
 					class={`nav-item-link relative z-10 flex min-h-16 flex-col items-center justify-center rounded-2xl px-3 py-2 ${
-						current ? "text-slate-900" : "text-slate-500"
+						current
+							? "text-slate-900 dark:text-slate-50"
+							: "text-slate-500 dark:text-slate-400"
 					}`}
 					aria-current={current ? "page" : undefined}
 					aria-label={item.label}
 				>
 					<item.icon
 						class={`nav-item-icon size-5 ${
-							current ? "fill-current text-slate-900" : "text-slate-500"
+							current
+								? "fill-current text-slate-900 dark:text-slate-50"
+								: "text-slate-500 dark:text-slate-400"
 						}`}
 						strokeWidth={2.15}
 					/>
 					<span
 						class={`nav-item-label mt-2 text-xs font-semibold uppercase tracking-widest ${
-							current ? "text-slate-900" : "text-slate-600"
+							current
+								? "text-slate-900 dark:text-slate-50"
+								: "text-slate-600 dark:text-slate-300"
 						}`}
 					>
 						{item.label}

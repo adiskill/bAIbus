@@ -10,7 +10,7 @@ import {
 const DEPARTURE_CACHE_TTL_SECONDS = 20;
 const BRATISLAVA_TIME_ZONE = "Europe/Bratislava";
 
-type CachedLiveDeparture = Omit<LiveDeparture, "minutesUntilDeparture"> & {
+type CachedLiveDeparture = Omit<LiveDeparture, "minutesUntilDeparture" | "remainingMs"> & {
 	remainingMs: number;
 };
 
@@ -107,6 +107,7 @@ function toLiveDeparture(departure: CachedLiveDeparture, elapsedMs = 0): LiveDep
 		destination: departure.destination,
 		platform: departure.platform,
 		routeType: departure.routeType,
+		remainingMs,
 		minutesUntilDeparture: getMinutesUntilDeparture(remainingMs),
 		delayMinutes: departure.delayMinutes,
 		isLive: departure.isLive

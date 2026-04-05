@@ -4,6 +4,29 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<meta name="color-scheme" content="light dark" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
+		<script>
+			(() => {
+				const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+				const applyThemePreference = () => {
+					const theme = mediaQuery.matches ? 'dark' : 'light';
+					document.documentElement.dataset.theme = theme;
+					document.documentElement.style.colorScheme = theme;
+				};
+
+				applyThemePreference();
+
+				if (typeof mediaQuery.addEventListener === 'function') {
+					mediaQuery.addEventListener('change', applyThemePreference);
+					return;
+				}
+
+				mediaQuery.addListener(applyThemePreference);
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

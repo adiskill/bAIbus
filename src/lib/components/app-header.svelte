@@ -1,30 +1,39 @@
 <script lang="ts">
 	import { page } from "$app/state";
 	import favicon from "$lib/assets/favicon.svg";
+	import PageHeader from "$lib/components/page-header.svelte";
+	import { Heading } from "$lib/components/ui/heading";
 	import { getI18n } from "$lib/i18n";
 	import { Search } from "@lucide/svelte";
 
 	const i18n = $derived(getI18n(page.data.locale));
-	let { searchLabel = i18n.messages.header.search }: { searchLabel?: string } = $props();
+	let {
+		searchLabel = i18n.messages.header.search,
+		showSearchButton = true,
+		onSearchClick
+	}: {
+		searchLabel?: string;
+		showSearchButton?: boolean;
+		onSearchClick?: (trigger: HTMLButtonElement) => void | Promise<void>;
+	} = $props();
 </script>
 
-<header class="sticky top-0 z-50 bg-slate-50/95 backdrop-blur-sm">
-	<div
-		class="flex items-center justify-between px-6 pb-4"
-		style:padding-top={"calc(env(safe-area-inset-top) + 1rem)"}
-	>
-		<div class="flex items-center gap-4">
-			<img src={favicon} alt="AIBus" class="size-8 rounded-md object-contain" />
-			<h1 class="text-3xl font-extrabold tracking-tight text-slate-800">
-				AIBus
-			</h1>
-		</div>
+<PageHeader>
+	<div class="flex items-center gap-4">
+		<img src={favicon} alt="AIBus" class="size-8 rounded-md object-contain" />
+		<Heading as="h1" size="3xl">
+			AIBus
+		</Heading>
+	</div>
+	{#if showSearchButton}
 		<button
 			type="button"
-			class="flex size-10 items-center justify-center rounded-full text-slate-500"
+			class="flex size-10 items-center justify-center rounded-full text-slate-500 dark:text-slate-400"
 			aria-label={searchLabel}
+			onclick={(event) =>
+				void onSearchClick?.(event.currentTarget as HTMLButtonElement)}
 		>
 			<Search class="size-7" strokeWidth={2.2} />
 		</button>
-	</div>
-</header>
+	{/if}
+</PageHeader>

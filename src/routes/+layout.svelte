@@ -40,8 +40,28 @@
 			document.documentElement.lang = page.data.locale;
 		});
 
-		function isStationPath(pathname: string) {
-			return pathname.startsWith("/stations/");
+		function isDetailPath(pathname: string) {
+			return pathname.startsWith("/stations/") || pathname.startsWith("/trips/");
+		}
+
+		function getDetailTransitionKind(
+			fromPathname: string,
+			toPathname: string
+		): RouteTransitionKind | null {
+			const fromStationDetail = fromPathname.startsWith("/stations/");
+			const toStationDetail = toPathname.startsWith("/stations/");
+			const fromTripDetail = fromPathname.startsWith("/trips/");
+			const toTripDetail = toPathname.startsWith("/trips/");
+
+			if (fromStationDetail && toTripDetail) {
+				return "forward";
+			}
+
+			if (fromTripDetail && toStationDetail) {
+				return "back";
+			}
+
+			return null;
 		}
 
 		function getTransitionKind(
@@ -53,11 +73,17 @@
 				return "fade";
 			}
 
-			const fromStation = isStationPath(fromPathname);
-			const toStation = isStationPath(toPathname);
+			const fromDetail = isDetailPath(fromPathname);
+			const toDetail = isDetailPath(toPathname);
 
-			if (fromStation !== toStation) {
-				return toStation ? "forward" : "back";
+			if (fromDetail !== toDetail) {
+				return toDetail ? "forward" : "back";
+			}
+
+			const detailTransitionKind = getDetailTransitionKind(fromPathname, toPathname);
+
+			if (detailTransitionKind) {
+				return detailTransitionKind;
 			}
 
 			const fromIndex = topLevelPathOrder.get(fromPathname);

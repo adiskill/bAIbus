@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { BusFront, ChevronRight, MapPinned, SquareM, TramFront } from "@lucide/svelte";
 
-	import { Card } from "$lib/components/ui/card";
+	import { PressableCard } from "$lib/components/ui/card";
+	import { Heading } from "$lib/components/ui/heading";
 	import type { StationMode } from "$lib/types/station";
-	import { cn } from "$lib/utils";
 
 	let {
 		class: className,
@@ -29,25 +29,25 @@
 	> = {
 		bus: {
 			icon: BusFront,
-			iconClass: "text-slate-500",
-			panelClass: "bg-slate-100"
+			iconClass: "text-slate-500 dark:text-slate-400",
+			panelClass: "bg-slate-100 dark:bg-slate-800"
 		},
 		tram: {
 			icon: SquareM,
-			iconClass: "text-slate-500",
-			panelClass: "bg-slate-100"
+			iconClass: "text-slate-500 dark:text-slate-400",
+			panelClass: "bg-slate-100 dark:bg-slate-800"
 		},
 		rail: {
 			icon: TramFront,
-			iconClass: "text-slate-500",
-			panelClass: "bg-slate-100"
+			iconClass: "text-slate-500 dark:text-slate-400",
+			panelClass: "bg-slate-100 dark:bg-slate-800"
 		}
 	};
 
 	const fallbackMeta = {
 		icon: MapPinned,
-		iconClass: "text-slate-500",
-		panelClass: "bg-slate-100"
+		iconClass: "text-slate-500 dark:text-slate-400",
+		panelClass: "bg-slate-100 dark:bg-slate-800"
 	};
 
 	function getModeMeta(mode?: StationMode) {
@@ -55,35 +55,27 @@
 	}
 </script>
 
-<a
+<PressableCard
 	href={href}
-	class="block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+	cardClass={className}
+	contentClass="flex items-center justify-between gap-3"
 >
-	<Card
-		class={cn(
-			"transition-colors active:bg-slate-100",
-			className
-		)}
-	>
-		{@const meta = getModeMeta(mode)}
-		<div class="flex items-center justify-between gap-3">
-			<div class="flex min-w-0 items-center gap-3">
-				<div
-					class={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${meta.panelClass}`}
-				>
-					<meta.icon class={`size-7 ${meta.iconClass}`} strokeWidth={2.1} />
-				</div>
-				<h3 class="truncate text-xl font-bold tracking-tight text-slate-800">
-					{name}
-				</h3>
-			</div>
-
-			<div class="flex shrink-0 items-center gap-3">
-				{#if distance}
-					<div class="text-sm font-extrabold tracking-wider text-slate-500">{distance}</div>
-				{/if}
-				<ChevronRight class="size-5 text-blue-600" strokeWidth={2.4} />
-			</div>
+	{@const meta = getModeMeta(mode)}
+	<div class="flex min-w-0 items-center gap-3">
+		<div
+			class={`flex size-12 shrink-0 items-center justify-center rounded-xl ${meta.panelClass}`}
+		>
+			<meta.icon class={`size-7 ${meta.iconClass}`} strokeWidth={2.1} />
 		</div>
-	</Card>
-</a>
+		<Heading as="h3" size="xl" class="truncate font-bold">
+			{name}
+		</Heading>
+	</div>
+
+	<div class="flex shrink-0 items-center gap-3">
+		{#if distance}
+			<div class="text-sm font-extrabold tracking-wider text-slate-500 dark:text-slate-400">{distance}</div>
+		{/if}
+		<ChevronRight class="size-5 text-slate-500 dark:text-slate-400" strokeWidth={2.4} />
+	</div>
+</PressableCard>

@@ -28,9 +28,11 @@ export const load: PageServerLoad = async ({ fetch, locals, params }) => {
 
 	let departureBoard = null;
 	let departureError: string | null = null;
+	let departureFetchedAt: string | null = null;
 
 	try {
 		departureBoard = await getLiveDepartureBoard(fetch, station.id);
+		departureFetchedAt = new Date().toISOString();
 	} catch (caughtError) {
 		departureError =
 			caughtError instanceof Error
@@ -41,6 +43,7 @@ export const load: PageServerLoad = async ({ fetch, locals, params }) => {
 	return {
 		station,
 		departureBoard,
-		departureError
+		departureError,
+		departureFetchedAt
 	};
 };

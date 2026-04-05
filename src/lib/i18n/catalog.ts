@@ -5,10 +5,24 @@ export const catalog = {
 			searchRoutes: "Search routes",
 			searchTimetables: "Search timetables"
 		},
+		searchOverlay: {
+			placeholder: "Search for a station or route",
+			recentHeading: "Recent searches",
+			emptyRecent: "Your recent searches will appear here.",
+			close: "Close search",
+			lastSearched: (relative: string) => `Last searched ${relative}`
+		},
 		nav: {
 			home: "Home",
 			navigation: "Navigation",
 			timetables: "Timetables"
+		},
+		workInProgress: {
+			heading: "Work in progress",
+			description: (featureName: string) =>
+				`${featureName} is still being built for a reliable mobile transit workflow.`,
+			homeHint: "Use Home for nearby stops and live departures in the meantime.",
+			openHome: "Open home"
 		},
 		home: {
 			title: "Home",
@@ -67,28 +81,53 @@ export const catalog = {
 			addFavorite: "Add station to favourites",
 			removeFavorite: "Remove station from favourites",
 			openOnMap: "Open station on map",
+			openTripDetails: (line: string, destination: string) =>
+				`Open trip ${line} to ${destination}`,
 			upcomingHeading: "Upcoming Departures",
 			refreshing: "Refreshing",
+			loadingMore: "Loading more departures",
 			liveSource: "Live IDS BK",
-			updatedAt: (time: string) => `Updated ${time}`,
+			updatedNow: "Updated now",
+			updatedAt: (time: string) => `Updated ${time} ago`,
 			waitingForData: "Waiting for data",
 			noLiveDepartures: "No live departures are available for this station right now.",
 			scheduled: "Scheduled",
 			onTime: "On time",
 			refreshError: "Unable to refresh live departures right now.",
+			loadMoreError: "Unable to load more departures right now.",
+			retryLoadMore: "Try again",
 			platformLabel: (platform: string) => `Platform ${platform}`,
+			lessThanMinute: "<1",
 			now: "Now",
 			minuteUnit: "min"
 		},
+		trip: {
+			metaDescription: (line: string, destination: string) =>
+				`Trip detail for line ${line} to ${destination}.`,
+			backToHome: "Back to home",
+			backToStation: "Back to station",
+			backToNavigation: "Back to navigation",
+			openOnMap: "Open destination on map",
+			arrivingNow: "Arriving now",
+			arrivingLessThanMinutePrefix: "Arriving in",
+			arrivingLessThanMinuteUnit: "min",
+			arrivingIn: (minutes: number) => `Arriving in ${minutes}m`,
+			delayBadge: (minutes: number) => `+${minutes}m delay`,
+			previousStop: "Previous stop",
+			nextStop: "Next stop",
+			transferStop: "Transfer stop"
+		},
 		errors: {
 			stationNotFound: "Station not found",
+			tripNotFound: "Trip not found",
 			invalidStationId: "Invalid station ID",
 			invalidLatitudeCoordinate: "Invalid latitude coordinate",
 			invalidLongitudeCoordinate: "Invalid longitude coordinate",
 			latitudeRange: "Latitude must be between -90 and 90",
 			longitudeRange: "Longitude must be between -180 and 180",
 			nearbyStationsLoad: "Unable to load nearby stations",
-			liveDeparturesLoad: "Unable to load live departures right now."
+			liveDeparturesLoad: "Unable to load live departures right now.",
+			tripLoad: "Unable to load trip details right now."
 		}
 	},
 	sk: {
@@ -97,10 +136,24 @@ export const catalog = {
 			searchRoutes: "Hľadať spojenia",
 			searchTimetables: "Hľadať cestovné poriadky"
 		},
+		searchOverlay: {
+			placeholder: "Vyhľadajte zastávku alebo linku",
+			recentHeading: "Nedávne vyhľadávania",
+			emptyRecent: "Vaše nedávne vyhľadávania sa zobrazia tu.",
+			close: "Zavrieť vyhľadávanie",
+			lastSearched: (relative: string) => `Naposledy hľadané ${relative}`
+		},
 		nav: {
 			home: "Domov",
 			navigation: "Navigácia",
 			timetables: "Cestovné poriadky"
+		},
+		workInProgress: {
+			heading: "Pracujeme na tom",
+			description: (featureName: string) =>
+				`${featureName} ešte pripravujeme tak, aby spoľahlivo fungovalo pri cestovaní na mobile.`,
+			homeHint: "Zatiaľ použite Domov pre zastávky v okolí a živé odchody.",
+			openHome: "Otvoriť domov"
 		},
 		home: {
 			title: "Domov",
@@ -160,30 +213,56 @@ export const catalog = {
 			addFavorite: "Pridať zastávku medzi obľúbené",
 			removeFavorite: "Odobrať zastávku z obľúbených",
 			openOnMap: "Otvoriť zastávku na mape",
+			openTripDetails: (line: string, destination: string) =>
+				`Otvoriť detail spoja ${line} smer ${destination}`,
 			upcomingHeading: "Najbližšie odchody",
 			refreshing: "Obnovuje sa",
+			loadingMore: "Načítavam ďalšie odchody",
 			liveSource: "Živé IDS BK",
-			updatedAt: (time: string) => `Aktualizované ${time}`,
+			updatedNow: "Aktualizované teraz",
+			updatedAt: (time: string) => `Aktualizované pred ${time}`,
 			waitingForData: "Čaká sa na dáta",
 			noLiveDepartures: "Momentálne nie sú pre túto zastávku dostupné žiadne živé odchody.",
 			scheduled: "Podľa rozpisu",
 			onTime: "Načas",
 			refreshError: "Živé odchody sa momentálne nepodarilo obnoviť.",
+			loadMoreError: "Ďalšie odchody sa momentálne nepodarilo načítať.",
+			retryLoadMore: "Skúsiť znova",
 			platformLabel: (platform: string) => `Nástupište ${platform}`,
+			lessThanMinute: "<1",
 			now: "Teraz",
 			minuteUnit: "min"
 		},
+		trip: {
+			metaDescription: (line: string, destination: string) =>
+				`Detail spoja linky ${line} smer ${destination}.`,
+			backToHome: "Späť domov",
+			backToStation: "Späť na zastávku",
+			backToNavigation: "Späť na navigáciu",
+			openOnMap: "Otvoriť cieľ na mape",
+			arrivingNow: "Prichádza teraz",
+			arrivingLessThanMinutePrefix: "Príde o",
+			arrivingLessThanMinuteUnit: "min",
+			arrivingIn: (minutes: number) => `Príde o ${minutes} min`,
+			delayBadge: (minutes: number) => `+${minutes} min meškanie`,
+			previousStop: "Predchádzajúca zastávka",
+			nextStop: "Ďalšia zastávka",
+			transferStop: "Prestupná zastávka"
+		},
 		errors: {
 			stationNotFound: "Zastávka sa nenašla",
+			tripNotFound: "Spoj sa nenašiel",
 			invalidStationId: "Neplatné ID zastávky",
 			invalidLatitudeCoordinate: "Neplatná zemepisná šírka",
 			invalidLongitudeCoordinate: "Neplatná zemepisná dĺžka",
 			latitudeRange: "Zemepisná šírka musí byť medzi -90 a 90",
 			longitudeRange: "Zemepisná dĺžka musí byť medzi -180 a 180",
 			nearbyStationsLoad: "Zastávky v okolí sa nepodarilo načítať",
-			liveDeparturesLoad: "Živé odchody sa momentálne nepodarilo načítať."
+			liveDeparturesLoad: "Živé odchody sa momentálne nepodarilo načítať.",
+			tripLoad: "Detail spoja sa momentálne nepodarilo načítať."
 		}
 	}
 } as const;
 
 export type Messages = (typeof catalog)["en"];
+export type LocalizedMessages = (typeof catalog)[keyof typeof catalog];

@@ -9,6 +9,7 @@
 	import AppHeader from "$lib/components/app-header.svelte";
 	import StationCard from "$lib/components/station-card.svelte";
 	import { Card, CardList } from "$lib/components/ui/card";
+	import { Heading } from "$lib/components/ui/heading";
 	import { getI18n } from "$lib/i18n";
 	import {
 		loadFavoriteStations,
@@ -242,32 +243,29 @@
 	/>
 </svelte:head>
 
-<div class="bg-slate-50 text-slate-800">
+<div class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
 	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
 		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
 			<AppHeader searchLabel={i18n.messages.header.search} />
 
 			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 				<section aria-labelledby="nearby-heading">
-					<h2
-						id="nearby-heading"
-						class="text-2xl font-extrabold tracking-tight text-slate-800"
-					>
+					<Heading id="nearby-heading">
 						{i18n.messages.home.nearbyHeading}
-					</h2>
+					</Heading>
 
 					<CardList class="mt-4">
 						{#if nearbyStopsStatus === "loading"}
 							<Card>
-								<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
 							</Card>
 						{:else if nearbyStopsStatus === "error"}
 							<Card>
-								<p class="text-sm font-semibold text-slate-600">{nearbyStopsMessage}</p>
+								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
 							</Card>
 						{:else if nearbyStops.length === 0}
 							<Card>
-								<p class="text-sm font-semibold text-slate-600">
+								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
 									{i18n.messages.home.noNearbyStops}
 								</p>
 							</Card>
@@ -285,12 +283,9 @@
 
 				{#if favoriteStops.length > 0}
 					<section aria-labelledby="favorites-heading" class="mt-8">
-						<h2
-							id="favorites-heading"
-							class="text-2xl font-extrabold tracking-tight text-slate-800"
-						>
+						<Heading id="favorites-heading">
 							{i18n.messages.home.favoritesHeading}
-						</h2>
+						</Heading>
 
 						<CardList class="mt-4">
 							{#each favoriteStops as favorite}

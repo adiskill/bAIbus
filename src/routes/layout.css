@@ -3,6 +3,8 @@
 @import "shadcn-svelte/tailwind.css";
 @import "@fontsource-variable/inter";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
 	--font-sans: 'Inter Variable', sans-serif;
 	--page-transition-distance: 1.5rem;
@@ -12,14 +14,18 @@
 
 @layer base {
 	* {
-		@apply border-slate-200 outline-blue-300/50;
+		@apply border-slate-200 outline-blue-300/50 dark:border-slate-800 dark:outline-blue-400/50;
 	}
 	body {
-		@apply bg-slate-50 text-slate-800;
+		@apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100;
 		font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 	}
 	html {
-		@apply font-sans;
+		@apply bg-slate-50 font-sans text-slate-800 dark:bg-slate-950 dark:text-slate-100;
+		color-scheme: light;
+	}
+	html[data-theme="dark"] {
+		color-scheme: dark;
 	}
 }
 
