@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>{i18n.messages.navigation.title} | AIBus</title>
+	<title>{i18n.messages.navigation.title} | bAIbus</title>
 	<meta
 		name="description"
 		content={i18n.messages.navigation.metaDescription}

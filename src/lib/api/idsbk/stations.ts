@@ -12,6 +12,7 @@ const STATIONS_ENDPOINT = `https://api.idsbk.sk/mobile/v3/station/${BRATISLAVA_C
 const STATION_CACHE_KEY = `idsbk:stations:v1:${BRATISLAVA_CITY_ID}`;
 const STATION_CACHE_TTL_SECONDS = 12 * 60 * 60;
 const EARTH_RADIUS_METERS = 6_371_000;
+const DEFAULT_STATION_SEARCH_LIMIT = 12;
 
 type IdbskStationResponse = {
 	stations?: IdbskStation[];
@@ -99,6 +100,81 @@ async function fetchStations(fetchFn: typeof fetch): Promise<Station[]> {
 	return stations;
 }
 
+function normalizeSearchValue(value: string) {
+	return value
+		.normalize("NFD")
+		.replace(/\p{Diacritic}/gu, "")
+		.toLocaleLowerCase("sk-SK")
+		.trim()
+		.replace(/\s+/g, " ");
+}
+
+function getStationSearchScore(station: Station, normalizedQuery: string) {
+	const normalizedName = normalizeSearchValue(station.name);
+	const normalizedCity = normalizeSearchValue(station.city);
+	const combinedValue = `${normalizedName} ${normalizedCity}`.trim();
+	const queryTerms = normalizedQuery.split(" ").filter(Boolean);
+
+	if (
+		queryTerms.length === 0 ||
+		!queryTerms.every((queryTerm) => combinedValue.includes(queryTerm))
+	) {
+		return null;
+	}
+
+	if (normalizedName === normalizedQuery) {
+		return 0;
+	}
+
+	if (normalizedName.startsWith(normalizedQuery)) {
+		return 1;
+	}
+
+	if (combinedValue.startsWith(normalizedQuery)) {
+		return 2;
+	}
+
+	if (normalizedName.includes(` ${normalizedQuery}`)) {
+		return 3;
+	}
+
+	if (combinedValue.includes(normalizedQuery)) {
+		return 4;
+	}
+
+	return 5;
+}
+
+function searchStationCollection(
+	stations: Station[],
+	query: string,
+	limit = DEFAULT_STATION_SEARCH_LIMIT
+) {
+	const normalizedQuery = normalizeSearchValue(query);
+
+	if (!normalizedQuery) {
+		return [];
+	}
+
+	return stations
+		.map((station) => ({
+			score: getStationSearchScore(station, normalizedQuery),
+			station
+		}))
+		.filter(
+			(result): result is { score: number; station: Station } =>
+				result.score !== null
+		)
+		.sort(
+			(left, right) =>
+				left.score - right.score ||
+				left.station.name.localeCompare(right.station.name, "sk-SK") ||
+				left.station.city.localeCompare(right.station.city, "sk-SK")
+		)
+		.slice(0, limit)
+		.map(({ station }) => station);
+}
+
 export async function getStationById(fetchFn: typeof fetch, stationId: number) {
 	const stations = await fetchStations(fetchFn);
 
@@ -113,6 +189,29 @@ export async function getStationByName(fetchFn: typeof fetch, stationName: strin
 		stations.find((station) => station.name.trim().toLocaleLowerCase("sk-SK") === normalizedStationName) ??
 		null
 	);
+}
+
+export async function searchStations(
+	fetchFn: typeof fetch,
+	query: string,
+	limit = DEFAULT_STATION_SEARCH_LIMIT
+) {
+	const { stations } = await fetchStationsWithDebug(fetchFn);
+
+	return searchStationCollection(stations, query, limit);
+}
+
+export async function searchStationsWithDebug(
+	fetchFn: typeof fetch,
+	query: string,
+	limit = DEFAULT_STATION_SEARCH_LIMIT
+): Promise<{ debug?: IdbskDebugInfo; stations: Station[] }> {
+	const { stations, debug } = await fetchStationsWithDebug(fetchFn);
+
+	return {
+		stations: searchStationCollection(stations, query, limit),
+		debug
+	};
 }
 
 function toRadians(value: number) {

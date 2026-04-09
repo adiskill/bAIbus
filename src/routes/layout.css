@@ -10,6 +10,9 @@
 	--page-transition-distance: 1.5rem;
 	--page-transition-duration: 240ms;
 	--page-transition-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--app-header-offset: calc(env(safe-area-inset-top) + 5rem);
+	--app-bottom-nav-offset: calc(env(safe-area-inset-bottom) + 7.5rem);
+	--app-content-min-height: calc(100dvh - var(--app-header-offset) - var(--app-bottom-nav-offset));
 }
 
 @layer base {
@@ -30,47 +33,83 @@
 }
 
 @supports (view-transition-name: none) {
+	.app-fixed-header {
+		view-transition-name: app-header;
+	}
+
+	.app-fixed-bottom-nav {
+		view-transition-name: app-bottom-nav;
+	}
+
 	.route-transition-shell {
 		view-transition-name: app-shell;
 	}
 
+	::view-transition-group(app-header),
 	::view-transition-group(app-shell) {
 		animation-duration: var(--page-transition-duration);
 		animation-timing-function: var(--page-transition-ease);
 	}
 
+	::view-transition-group(app-header) {
+		z-index: 2;
+	}
+
+	::view-transition-group(app-bottom-nav) {
+		animation-duration: 1ms;
+		z-index: 2;
+	}
+
+	::view-transition-group(app-shell) {
+		z-index: 1;
+	}
+
+	::view-transition-image-pair(app-header),
 	::view-transition-image-pair(app-shell) {
 		isolation: isolate;
 	}
 
+	::view-transition-old(app-bottom-nav),
+	::view-transition-new(app-bottom-nav) {
+		animation: none;
+		mix-blend-mode: normal;
+	}
+
+	::view-transition-old(app-header),
+	::view-transition-new(app-header),
 	::view-transition-old(app-shell),
 	::view-transition-new(app-shell) {
-		height: 100%;
 		animation-duration: var(--page-transition-duration);
 		animation-fill-mode: both;
 		animation-timing-function: var(--page-transition-ease);
 	}
 
+	:root[data-route-transition="forward"]::view-transition-old(app-header),
 	:root[data-route-transition="forward"]::view-transition-old(app-shell) {
 		animation-name: page-slide-out-forward;
 	}
 
+	:root[data-route-transition="forward"]::view-transition-new(app-header),
 	:root[data-route-transition="forward"]::view-transition-new(app-shell) {
 		animation-name: page-slide-in-forward;
 	}
 
+	:root[data-route-transition="back"]::view-transition-old(app-header),
 	:root[data-route-transition="back"]::view-transition-old(app-shell) {
 		animation-name: page-slide-out-back;
 	}
 
+	:root[data-route-transition="back"]::view-transition-new(app-header),
 	:root[data-route-transition="back"]::view-transition-new(app-shell) {
 		animation-name: page-slide-in-back;
 	}
 
+	:root[data-route-transition="fade"]::view-transition-old(app-header),
 	:root[data-route-transition="fade"]::view-transition-old(app-shell) {
 		animation-name: page-fade-out;
 	}
 
+	:root[data-route-transition="fade"]::view-transition-new(app-header),
 	:root[data-route-transition="fade"]::view-transition-new(app-shell) {
 		animation-name: page-fade-in;
 	}

@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>{i18n.messages.timetables.title} | AIBus</title>
+	<title>{i18n.messages.timetables.title} | bAIbus</title>
 	<meta
 		name="description"
 		content={i18n.messages.timetables.metaDescription}

@@ -5,12 +5,22 @@
 	import { onMount } from "svelte";
 
 	import { fetchNearbyStops, type NearbyStopApiItem } from "$lib/api/nearby-stops";
+	import {
+		fetchStationSearchResults,
+		type StationSearchApiItem
+	} from "$lib/api/station-search";
 	import AppBottomNav from "$lib/components/app-bottom-nav.svelte";
 	import AppHeader from "$lib/components/app-header.svelte";
+	import StationSearchHistoryItem from "$lib/components/station-search-history-item.svelte";
+	import StationSearchResultItem from "$lib/components/station-search-result-item.svelte";
 	import StationCard from "$lib/components/station-card.svelte";
 	import { Card, CardList } from "$lib/components/ui/card";
 	import { Heading } from "$lib/components/ui/heading";
 	import { getI18n } from "$lib/i18n";
+	import type {
+		SearchOverlayConfig,
+		SearchOverlayItem
+	} from "../lib/search-overlay.svelte.ts";
 	import {
 		loadFavoriteStations,
 		persistFavoriteStations,
@@ -25,6 +35,7 @@
 
 	const LOCATION_CACHE_MS = 60_000;
 	const NEARBY_STOPS_CACHE_MS = 60_000;
+	const STATION_SEARCH_SCOPE = "station-search";
 	const i18n = $derived(getI18n(page.data.locale));
 	const kilometerFormatter = $derived(
 		new Intl.NumberFormat(i18n.intlLocale, {
@@ -51,6 +62,15 @@
 
 	function getStationHref(station: Pick<FavoriteStation, "id">) {
 		return `/stations/${station.id}`;
+	}
+
+	function mapStationSearchResult(station: StationSearchApiItem): SearchOverlayItem {
+		return {
+			id: `station-${station.id}`,
+			label: station.name,
+			query: station.name,
+			href: getStationHref(station)
+		};
 	}
 
 	function mapStationToNearbyStop(station: NearbyStopApiItem): NearbyStop {
@@ -187,6 +207,20 @@
 	});
 
 	let nearbyStops = $derived(nearbyStopsQuery.data ?? []);
+	let stationSearchOverlayConfig = $derived.by(
+		(): SearchOverlayConfig => ({
+			scope: STATION_SEARCH_SCOPE,
+			placeholder: i18n.messages.home.searchPlaceholder,
+			searchingLabel: i18n.messages.home.searchingStations,
+			emptyResultsLabel: i18n.messages.home.noStationSearchResults,
+			search: async (query, { fetch, signal }) =>
+				(await fetchStationSearchResults(fetch, query, signal)).map(
+					mapStationSearchResult
+				),
+			resultItemComponent: StationSearchResultItem,
+			historyItemComponent: StationSearchHistoryItem
+		})
+	);
 
 	let nearbyStopsStatus = $derived.by((): "loading" | "ready" | "error" => {
 		if (locationQuery.isError || nearbyStopsQuery.isError) {
@@ -236,7 +270,7 @@
 </script>
 
 <svelte:head>
-	<title>{i18n.messages.home.title} | AIBus</title>
+	<title>{i18n.messages.home.title} | bAIbus</title>
 	<meta
 		name="description"
 		content={i18n.messages.home.metaDescription}
@@ -244,61 +278,63 @@
 </svelte:head>
 
 <div class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
-		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
-			<AppHeader searchLabel={i18n.messages.header.search} />
+	<div class="mx-auto min-h-dvh max-w-screen-sm">
+		<AppHeader
+			searchLabel={i18n.messages.header.search}
+			searchOverlayConfig={stationSearchOverlayConfig}
+			showSearchButton={true}
+		/>
 
-			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-				<section aria-labelledby="nearby-heading">
-					<Heading id="nearby-heading">
-						{i18n.messages.home.nearbyHeading}
+		<main class="route-transition-shell mt-[var(--app-header-offset)] mb-[var(--app-bottom-nav-offset)] min-h-[var(--app-content-min-height)] px-6 py-6">
+			<section aria-labelledby="nearby-heading">
+				<Heading id="nearby-heading">
+					{i18n.messages.home.nearbyHeading}
+				</Heading>
+
+				<CardList class="mt-4">
+					{#if nearbyStopsStatus === "loading"}
+						<Card>
+							<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
+						</Card>
+					{:else if nearbyStopsStatus === "error"}
+						<Card>
+							<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
+						</Card>
+					{:else if nearbyStops.length === 0}
+						<Card>
+							<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
+								{i18n.messages.home.noNearbyStops}
+							</p>
+						</Card>
+					{:else}
+						{#each nearbyStops as stop}
+							<StationCard
+								href={getStationHref(stop)}
+								name={stop.name}
+								distance={stop.distance}
+							/>
+						{/each}
+					{/if}
+				</CardList>
+			</section>
+
+			{#if favoriteStops.length > 0}
+				<section aria-labelledby="favorites-heading" class="mt-8">
+					<Heading id="favorites-heading">
+						{i18n.messages.home.favoritesHeading}
 					</Heading>
 
 					<CardList class="mt-4">
-						{#if nearbyStopsStatus === "loading"}
-							<Card>
-								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
-							</Card>
-						{:else if nearbyStopsStatus === "error"}
-							<Card>
-								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">{nearbyStopsMessage}</p>
-							</Card>
-						{:else if nearbyStops.length === 0}
-							<Card>
-								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
-									{i18n.messages.home.noNearbyStops}
-								</p>
-							</Card>
-						{:else}
-							{#each nearbyStops as stop}
-								<StationCard
-									href={getStationHref(stop)}
-									name={stop.name}
-									distance={stop.distance}
-								/>
-							{/each}
-						{/if}
+						{#each favoriteStops as favorite}
+							<StationCard
+								href={getStationHref(favorite)}
+								name={favorite.name}
+							/>
+						{/each}
 					</CardList>
 				</section>
-
-				{#if favoriteStops.length > 0}
-					<section aria-labelledby="favorites-heading" class="mt-8">
-						<Heading id="favorites-heading">
-							{i18n.messages.home.favoritesHeading}
-						</Heading>
-
-						<CardList class="mt-4">
-							{#each favoriteStops as favorite}
-								<StationCard
-									href={getStationHref(favorite)}
-									name={favorite.name}
-								/>
-							{/each}
-						</CardList>
-					</section>
-				{/if}
-			</main>
-		</div>
+			{/if}
+		</main>
 
 		<AppBottomNav />
 	</div>

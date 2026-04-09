@@ -7,11 +7,10 @@ import {
 } from "$lib/api/idsbk/http";
 import type { Locale } from "$lib/i18n";
 import { getI18n } from "$lib/i18n";
-import type { TripDetail, TripSegmentProgress, TripState } from "$lib/types/trip";
+import type { TripDetail, TripState } from "$lib/types/trip";
 
 const BRATISLAVA_TIME_ZONE = "Europe/Bratislava";
 const TRIP_CACHE_TTL_SECONDS = 10;
-const EARTH_RADIUS_METERS = 6_371_000;
 
 type IdbskTripResponse = {
 	trip_id?: number;
@@ -90,27 +89,6 @@ function getNonEmptyValue(value?: string | null) {
 
 function isFiniteNumber(value: unknown): value is number {
 	return typeof value === "number" && Number.isFinite(value);
-}
-
-function toRadians(value: number) {
-	return (value * Math.PI) / 180;
-}
-
-function calculateDistanceMeters(origin: Coordinates, destination: Coordinates) {
-	const latitudeDelta = toRadians(destination.latitude - origin.latitude);
-	const longitudeDelta = toRadians(destination.longitude - origin.longitude);
-	const originLatitude = toRadians(origin.latitude);
-	const destinationLatitude = toRadians(destination.latitude);
-
-	const haversine =
-		Math.sin(latitudeDelta / 2) ** 2 +
-		Math.cos(originLatitude) *
-			Math.cos(destinationLatitude) *
-			Math.sin(longitudeDelta / 2) ** 2;
-
-	return Math.round(
-		2 * EARTH_RADIUS_METERS * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-	);
 }
 
 function parseTripId(tripId: string) {
@@ -260,46 +238,6 @@ function normalizeTripRealtime(
 			: null,
 		vehicleCoordinates: normalizeCoordinates(payload.gps)
 	};
-}
-
-function getSegmentProgress(
-	stations: TripSnapshotStation[],
-	lastDepartedStationId: number | null,
-	vehicleCoordinates: Coordinates | null
-): TripSegmentProgress | null {
-	if (lastDepartedStationId === null || vehicleCoordinates === null) {
-		return null;
-	}
-
-	const fromIndex = getLastMatchingStationIndex(stations, lastDepartedStationId);
-
-	if (fromIndex < 0 || fromIndex >= stations.length - 1) {
-		return null;
-	}
-
-	const fromStation = stations[fromIndex];
-	const toStation = stations[fromIndex + 1];
-
-	if (fromStation.coordinates === null || toStation.coordinates === null) {
-		return null;
-	}
-
-	const distanceFromVehicleToFromStation = calculateDistanceMeters(
-		vehicleCoordinates,
-		fromStation.coordinates
-	);
-	const distanceFromVehicleToToStation = calculateDistanceMeters(
-		vehicleCoordinates,
-		toStation.coordinates
-	);
-	const totalDistance =
-		distanceFromVehicleToFromStation + distanceFromVehicleToToStation;
-
-	if (totalDistance <= 0) {
-		return 0;
-	}
-
-	return Number((distanceFromVehicleToFromStation / totalDistance).toFixed(3));
 }
 
 function normalizeTripSnapshot(
@@ -461,18 +399,15 @@ export async function getIdsbkTripDetail(
 		headsign: snapshot.headsign,
 		departedStationId: lastDepartedStationId,
 		delay: delaySeconds,
-		progress: getSegmentProgress(
-			snapshot.stations,
-			lastDepartedStationId,
-			realtime?.vehicleCoordinates ?? null
-		),
+		vehiclePosition: realtime?.vehicleCoordinates ?? null,
 		backLink: backHref,
 		backText: backLabel,
 		mapLink: getMapHref(snapshot.headsign),
 		stops: snapshot.stations.map((station) => ({
 			id: station.id,
 			name: station.name,
-			departureTime: formatMinutesOfDay(station.plannedDepartureMinutesOfDay)
+			departureTime: formatMinutesOfDay(station.plannedDepartureMinutesOfDay),
+			position: station.coordinates
 		}))
 	};
 }
@@ -493,7 +428,7 @@ export async function getIdsbkTripStateWithDebug(
 		state: {
 			delay: realtime.delaySeconds ?? 0,
 			departedStationId: realtime.lastDepartedStationId,
-			progress: null
+			vehiclePosition: realtime.vehicleCoordinates
 		},
 		debug
 	};

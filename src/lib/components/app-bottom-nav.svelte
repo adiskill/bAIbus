@@ -65,7 +65,7 @@
 	});
 </script>
 
-<nav class="sticky bottom-0 z-50 mt-auto bg-slate-50/95 backdrop-blur-sm dark:bg-slate-950/95">
+<nav class="app-fixed-bottom-nav fixed bottom-0 left-1/2 z-50 w-full max-w-screen-sm -translate-x-1/2 bg-slate-50/95 backdrop-blur-sm dark:bg-slate-950/95">
 	<div
 		class="rounded-t-3xl bg-white px-6 pt-5 shadow-lg shadow-slate-900/5 dark:bg-slate-900 dark:shadow-black/30"
 		style:padding-bottom={"calc(env(safe-area-inset-bottom) + 1.5rem)"}

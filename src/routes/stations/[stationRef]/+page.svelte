@@ -44,7 +44,6 @@
 	let currentTimestamp = $state(Date.now());
 	let departureLimit = $state(INITIAL_DEPARTURE_LIMIT);
 	let canLoadMoreDepartures = $state(false);
-	let scrollRegion = $state<HTMLElement | null>(null);
 	let loadMoreSentinel = $state<HTMLDivElement | null>(null);
 
 	let stationMapHref = $derived(
@@ -100,7 +99,6 @@
 
 	$effect(() => {
 		if (
-			!scrollRegion ||
 			!loadMoreSentinel ||
 			departures.length === 0 ||
 			!canLoadMoreDepartures ||
@@ -118,7 +116,6 @@
 				}
 			},
 			{
-				root: scrollRegion,
 				rootMargin: "0px 0px 240px 0px"
 			}
 		);
@@ -296,7 +293,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.station.name} | AIBus</title>
+	<title>{data.station.name} | bAIbus</title>
 	<meta
 		name="description"
 		content={i18n.messages.station.metaDescription(data.station.name, data.station.city)}
@@ -304,186 +301,179 @@
 </svelte:head>
 
 <div class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col overflow-x-hidden">
-		<div class="route-transition-shell min-h-0 flex flex-1 flex-col overflow-x-hidden">
-			<main bind:this={scrollRegion} class="min-h-0 flex-1 overflow-y-auto pb-8">
-				<section
-					aria-labelledby="station-heading"
-					class="px-6"
+	<div class="mx-auto min-h-dvh max-w-screen-sm overflow-x-hidden">
+		<PageHeader>
+			<div class="min-w-0 flex-1">
+				<div class="flex min-w-0 items-center gap-3">
+					<BackButton
+						href="/"
+						aria-label={i18n.messages.station.backToHome}
+					/>
+
+					<Heading
+						as="h1"
+						id="station-heading"
+						class="min-w-0 truncate"
+					>
+						{data.station.name}
+					</Heading>
+				</div>
+			</div>
+
+			<div class="flex shrink-0 items-center gap-2">
+				<IconAction
+					aria-label={isFavorite
+						? i18n.messages.station.removeFavorite
+						: i18n.messages.station.addFavorite}
+					aria-pressed={isFavorite}
+					onclick={handleFavoriteToggle}
 				>
-					<PageHeader>
-						<div class="min-w-0 flex-1">
-							<div class="flex min-w-0 items-center gap-3">
-								<BackButton
-									href="/"
-									aria-label={i18n.messages.station.backToHome}
-								/>
+					<Bookmark
+						class="size-5"
+						strokeWidth={2.2}
+						fill={isFavorite ? "currentColor" : "none"}
+					/>
+				</IconAction>
+				<IconAction
+					href={stationMapHref}
+					target="_blank"
+					rel="noreferrer"
+					aria-label={i18n.messages.station.openOnMap}
+				>
+					<MapPin class="size-5" strokeWidth={2.2} />
+				</IconAction>
+			</div>
+		</PageHeader>
 
-								<Heading
-									as="h1"
-									id="station-heading"
-									class="min-w-0 truncate"
-								>
-									{data.station.name}
-								</Heading>
-							</div>
-						</div>
-
-						<div class="flex shrink-0 items-center gap-2">
-							<IconAction
-								aria-label={isFavorite
-									? i18n.messages.station.removeFavorite
-									: i18n.messages.station.addFavorite}
-								aria-pressed={isFavorite}
-								onclick={handleFavoriteToggle}
-							>
-								<Bookmark
-									class="size-5"
-									strokeWidth={2.2}
-									fill={isFavorite ? "currentColor" : "none"}
-								/>
-							</IconAction>
-							<IconAction
-								href={stationMapHref}
-								target="_blank"
-								rel="noreferrer"
-								aria-label={i18n.messages.station.openOnMap}
-							>
-								<MapPin class="size-5" strokeWidth={2.2} />
-							</IconAction>
-						</div>
-					</PageHeader>
-				</section>
-
-				<section aria-labelledby="upcoming-heading" class="mt-6 px-6">
-					<div class="flex items-center justify-between gap-4">
-						<Heading
-							id="upcoming-heading"
-							size="xs"
-							class="uppercase tracking-widest text-slate-500 dark:text-slate-400"
-						>
-							{i18n.messages.station.upcomingHeading}
-						</Heading>
-						<div class="text-right">
-							<p class="text-sm font-medium text-slate-500 dark:text-slate-400">
-								{#if isRefreshingDepartures}
-									{i18n.messages.station.refreshing}
-								{:else if relativeLastUpdatedAt}
-									{relativeLastUpdatedAt === "0s"
-										? i18n.messages.station.updatedNow
-										: i18n.messages.station.updatedAt(relativeLastUpdatedAt)}
-								{:else}
-									{i18n.messages.station.waitingForData}
-								{/if}
-							</p>
-						</div>
+		<main class="route-transition-shell mt-[var(--app-header-offset)] mb-[var(--app-bottom-nav-offset)] min-h-[var(--app-content-min-height)] px-6 pt-6 pb-8">
+			<section aria-labelledby="upcoming-heading">
+				<div class="flex items-center justify-between gap-4">
+					<Heading
+						id="upcoming-heading"
+						size="xs"
+						class="uppercase tracking-widest text-slate-500 dark:text-slate-400"
+					>
+						{i18n.messages.station.upcomingHeading}
+					</Heading>
+					<div class="text-right">
+						<p class="text-sm font-medium text-slate-500 dark:text-slate-400">
+							{#if isRefreshingDepartures}
+								{i18n.messages.station.refreshing}
+							{:else if relativeLastUpdatedAt}
+								{relativeLastUpdatedAt === "0s"
+									? i18n.messages.station.updatedNow
+									: i18n.messages.station.updatedAt(relativeLastUpdatedAt)}
+							{:else}
+								{i18n.messages.station.waitingForData}
+							{/if}
+						</p>
 					</div>
+				</div>
 
-					<CardList class="mt-6">
-						{#if departures.length === 0}
-							<Card>
-								<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
-									{departureErrorMessage ??
-										i18n.messages.station.noLiveDepartures}
-								</p>
-							</Card>
-						{:else}
-							{#each departures as departure}
-								<PressableCard
-									href={getTripHref(departure)}
-									cardClass="overflow-hidden p-0"
-									contentClass="flex items-center justify-between gap-3 px-4 py-4"
-									aria-label={i18n.messages.station.openTripDetails(
-										departure.line,
-										departure.destination
-									)}
+				<CardList class="mt-6">
+					{#if departures.length === 0}
+						<Card>
+							<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
+								{departureErrorMessage ??
+									i18n.messages.station.noLiveDepartures}
+							</p>
+						</Card>
+					{:else}
+						{#each departures as departure}
+							<PressableCard
+								href={getTripHref(departure)}
+								cardClass="overflow-hidden p-0"
+								contentClass="flex items-center justify-between gap-3 px-4 py-4"
+								aria-label={i18n.messages.station.openTripDetails(
+									departure.line,
+									departure.destination
+								)}
+							>
+								<div
+									class="flex min-w-0 flex-1 items-center gap-3"
 								>
-									<div
-										class="flex min-w-0 flex-1 items-center gap-3"
-									>
-										<LineNumber
-											line={departure.line}
-										/>
+									<LineNumber
+										line={departure.line}
+									/>
 
-										<div class="min-w-0 flex-1">
-											<Heading
-												as="p"
-												size="base"
-												class="min-w-0 truncate font-bold"
-											>
-												{departure.destination}
-											</Heading>
-											<div
-												class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
-											>
-												{#if departure.platform}
-													<span>{i18n.messages.station.platformLabel(departure.platform)}</span>
-												{/if}
-											</div>
+									<div class="min-w-0 flex-1">
+										<Heading
+											as="p"
+											size="base"
+											class="min-w-0 truncate font-bold"
+										>
+											{departure.destination}
+										</Heading>
+										<div
+											class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400"
+										>
+											{#if departure.platform}
+												<span>{i18n.messages.station.platformLabel(departure.platform)}</span>
+											{/if}
 										</div>
 									</div>
+								</div>
 
-									<div class="shrink-0 text-right">
-										{#if getDepartureArrivalDisplay(departure).kind === "now"}
-											<p class="text-3xl font-extrabold tracking-tight text-blue-600">
-												{i18n.messages.station.now}
-											</p>
-										{:else if getDepartureArrivalDisplay(departure).kind === "underMinute"}
-											<p class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
-												<LessThanValue /><span
-													class="ml-1 text-sm font-medium"
-												>
-													{i18n.messages.station.minuteUnit}
-												</span>
-											</p>
-										{:else}
-											<p class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
-												{getDepartureArrivalMinutes(departure)}<span
-													class="ml-1 text-sm font-medium"
-												>
-													{i18n.messages.station.minuteUnit}
-												</span>
-											</p>
-										{/if}
-										{#if getStatusLabel(departure)}
-											<p
-												class={`-mt-1 text-xs font-extrabold uppercase tracking-wider ${getStatusClass(departure)}`}
-											>
-												{getStatusLabel(departure)}
-											</p>
-										{/if}
-									</div>
-								</PressableCard>
-							{/each}
-
-							{#if isLoadingMoreDepartures || loadMoreErrorMessage}
-								<Card aria-live="polite">
-									<div class="flex items-center justify-between gap-3">
-										<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
-											{loadMoreErrorMessage ??
-												i18n.messages.station.loadingMore}
+								<div class="shrink-0 text-right">
+									{#if getDepartureArrivalDisplay(departure).kind === "now"}
+										<p class="text-3xl font-extrabold tracking-tight text-blue-600">
+											{i18n.messages.station.now}
 										</p>
-										{#if loadMoreErrorMessage}
-											<Button
-												size="sm"
-												variant="outline"
-												onclick={() => void loadMoreDepartures()}
+									{:else if getDepartureArrivalDisplay(departure).kind === "underMinute"}
+										<p class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+											<LessThanValue /><span
+												class="ml-1 text-sm font-medium"
 											>
-												{i18n.messages.station.retryLoadMore}
-											</Button>
-										{/if}
-									</div>
-								</Card>
-							{/if}
-						{/if}
-					</CardList>
+												{i18n.messages.station.minuteUnit}
+											</span>
+										</p>
+									{:else}
+										<p class="text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+											{getDepartureArrivalMinutes(departure)}<span
+												class="ml-1 text-sm font-medium"
+											>
+												{i18n.messages.station.minuteUnit}
+											</span>
+										</p>
+									{/if}
+									{#if getStatusLabel(departure)}
+										<p
+											class={`-mt-1 text-xs font-extrabold uppercase tracking-wider ${getStatusClass(departure)}`}
+										>
+											{getStatusLabel(departure)}
+										</p>
+									{/if}
+								</div>
+							</PressableCard>
+						{/each}
 
-					{#if departures.length > 0 && canLoadMoreDepartures}
-						<div bind:this={loadMoreSentinel} class="h-1" aria-hidden="true"></div>
+						{#if isLoadingMoreDepartures || loadMoreErrorMessage}
+							<Card aria-live="polite">
+								<div class="flex items-center justify-between gap-3">
+									<p class="text-sm font-semibold text-slate-600 dark:text-slate-300">
+										{loadMoreErrorMessage ??
+											i18n.messages.station.loadingMore}
+									</p>
+									{#if loadMoreErrorMessage}
+										<Button
+											size="sm"
+											variant="outline"
+											onclick={() => void loadMoreDepartures()}
+										>
+											{i18n.messages.station.retryLoadMore}
+										</Button>
+									{/if}
+								</div>
+							</Card>
+						{/if}
 					{/if}
-				</section>
-			</main>
-		</div>
+				</CardList>
+
+				{#if departures.length > 0 && canLoadMoreDepartures}
+					<div bind:this={loadMoreSentinel} class="h-1" aria-hidden="true"></div>
+				{/if}
+			</section>
+		</main>
 
 		<AppBottomNav />
 	</div>

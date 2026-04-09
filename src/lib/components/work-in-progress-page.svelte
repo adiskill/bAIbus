@@ -19,44 +19,42 @@
 </script>
 
 <div class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col">
-		<div class="route-transition-shell min-h-0 flex flex-1 flex-col">
-			<AppHeader {searchLabel} showSearchButton={false} />
+	<div class="mx-auto min-h-dvh max-w-screen-sm">
+		<AppHeader {searchLabel} />
 
-			<main class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-				<section
-					aria-labelledby="work-in-progress-heading"
-					class="flex min-h-full items-center"
-				>
-					<Card class="w-full rounded-xl px-6 py-6 shadow-sm">
-						<div class="flex size-14 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">
-							<Construction class="size-8" strokeWidth={2.2} />
-						</div>
+		<main class="route-transition-shell mt-[var(--app-header-offset)] mb-[var(--app-bottom-nav-offset)] min-h-[var(--app-content-min-height)] px-6 py-6">
+			<section
+				aria-labelledby="work-in-progress-heading"
+				class="flex min-h-[var(--app-content-min-height)] items-center"
+			>
+				<Card class="w-full rounded-xl px-6 py-6 shadow-sm">
+					<div class="flex size-14 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200">
+						<Construction class="size-8" strokeWidth={2.2} />
+					</div>
 
-						<p class="mt-6 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-							{featureName}
-						</p>
+					<p class="mt-6 text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+						{featureName}
+					</p>
 
-						<Heading id="work-in-progress-heading" as="h2" size="3xl" class="mt-3">
-							{messages.workInProgress.heading}
-						</Heading>
+					<Heading id="work-in-progress-heading" as="h2" size="3xl" class="mt-3">
+						{messages.workInProgress.heading}
+					</Heading>
 
-						<p class="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
-							{messages.workInProgress.description(featureName)}
-						</p>
+					<p class="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300">
+						{messages.workInProgress.description(featureName)}
+					</p>
 
-						<p class="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-							{messages.workInProgress.homeHint}
-						</p>
+					<p class="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+						{messages.workInProgress.homeHint}
+					</p>
 
-						<Button href="/" variant="secondary" size="lg" class="mt-8 w-full">
-							<House class="size-5" strokeWidth={2.2} />
-							{messages.workInProgress.openHome}
-						</Button>
-					</Card>
-				</section>
-			</main>
-		</div>
+					<Button href="/" variant="secondary" size="lg" class="mt-8 w-full">
+						<House class="size-5" strokeWidth={2.2} />
+						{messages.workInProgress.openHome}
+					</Button>
+				</Card>
+			</section>
+		</main>
 
 		<AppBottomNav />
 	</div>

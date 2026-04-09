@@ -2,9 +2,13 @@ export type TripStop = {
 	id: number;
 	name: string;
 	departureTime: string;
+	position: TripVehiclePosition | null;
 };
 
-export type TripSegmentProgress = number;
+export type TripVehiclePosition = {
+	latitude: number;
+	longitude: number;
+};
 
 export type TripDetail = {
 	id: string;
@@ -12,7 +16,7 @@ export type TripDetail = {
 	headsign: string;
 	departedStationId: number | null;
 	delay: number;
-	progress: TripSegmentProgress | null;
+	vehiclePosition: TripVehiclePosition | null;
 	backLink: string;
 	backText: string;
 	mapLink: string;
@@ -22,7 +26,7 @@ export type TripDetail = {
 export type TripState = {
 	delay: number;
 	departedStationId: number | null;
-	progress: TripSegmentProgress | null;
+	vehiclePosition: TripVehiclePosition | null;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -33,7 +37,7 @@ export function serializeTripStatePayload(state: TripState) {
 	return {
 		delay: state.delay,
 		departedStationId: state.departedStationId,
-		progress: state.progress
+		vehiclePosition: state.vehiclePosition
 	};
 }
 
@@ -43,7 +47,7 @@ export function parseTripStatePayload(payload: unknown): TripState {
 		typeof payload.delay !== "number" ||
 		(payload.departedStationId !== null &&
 			typeof payload.departedStationId !== "number") ||
-		!isTripSegmentProgress(payload.progress)
+		!isTripVehiclePosition(payload.vehiclePosition)
 	) {
 		throw new Error("Trip state response payload is invalid");
 	}
@@ -51,20 +55,25 @@ export function parseTripStatePayload(payload: unknown): TripState {
 	return {
 		delay: payload.delay,
 		departedStationId: payload.departedStationId,
-		progress: payload.progress
+		vehiclePosition: payload.vehiclePosition
 	};
 }
 
-function isTripSegmentProgress(
+function isTripVehiclePosition(
 	value: unknown
-): value is TripSegmentProgress | null {
+): value is TripVehiclePosition | null {
 	if (value === null) {
 		return true;
 	}
 
-	if (typeof value !== "number") {
+	if (!isRecord(value)) {
 		return false;
 	}
 
-	return Number.isFinite(value) && value >= 0 && value <= 1;
+	return (
+		typeof value.latitude === "number" &&
+		Number.isFinite(value.latitude) &&
+		typeof value.longitude === "number" &&
+		Number.isFinite(value.longitude)
+	);
 }

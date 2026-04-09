@@ -1,60 +1,58 @@
-# aibus
+# bAIbbs
 
-Svelte 5 starter project using SvelteKit, Tailwind CSS v4, and `shadcn-svelte`.
+`bAIbus` is an improved UX frontend for Bratislava public transportation.
 
-## Stack
-
-- Svelte `5`
-- SvelteKit `2`
-- Tailwind CSS `4`
-- `shadcn-svelte` with the `nova` preset
+It is a mobile-first web app focused on faster trip planning, stop and line lookup, departure boards, and clearer service information for people using public transport in Bratislava. The app is built to present IDS BK transit data in a simpler, more reliable interface for everyday commuting.
 
 ## Development
 
+Install dependencies:
+
 ```sh
-bun dev
+bun install
 ```
 
-Set the required environment variables in `.env`:
+Create your local environment file:
+
+```sh
+cp .env.example .env
+```
+
+Required variables in `.env`:
 
 ```sh
 IDSBK_API_KEY=your-idsbk-api-key
 IDSBK_SESSION=your-idsbk-session
 VALKEY_URL=redis://localhost:6379
-VALKEY_PREFIX=aibus
+VALKEY_PREFIX=bAIbus
 ```
 
-Open the app in a browser with:
+Start the development server:
+
+```sh
+bun dev
+```
+
+Open the app in a browser:
 
 ```sh
 bun run dev -- --open
 ```
 
-## Checks
+Run project checks:
 
 ```sh
 bun run check
 bun run build
 ```
 
-## Adding components
+## Docker Compose Installation
 
-Use the `shadcn-svelte` CLI to install more UI components:
+Example Compose file: [`docker-compose.example.yml`](./docker-compose.example.yml)
 
-```sh
-bunx shadcn-svelte@latest add button
-```
-
-## Docker
-
-Build the image:
+Make sure `.env` contains at least:
 
 ```sh
-docker build -t aibus .
-```
-
-Run the container:
-
-```sh
-docker run --rm -p 3000:3000 aibus
+IDSBK_API_KEY=your-idsbk-api-key
+IDSBK_SESSION=your-idsbk-session
 ```

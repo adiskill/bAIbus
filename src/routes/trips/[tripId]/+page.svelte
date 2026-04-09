@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
+	import { afterNavigate, disableScrollHandling } from "$app/navigation";
 	import { page } from "$app/state";
 	import BackButton from "$lib/components/back-button.svelte";
 	import PageHeader from "$lib/components/page-header.svelte";
@@ -14,9 +15,10 @@
 	import LessThanValue from "$lib/components/less-than-value.svelte";
 	import LineNumber from "$lib/components/line-number.svelte";
 	import { getI18n } from "$lib/i18n";
+	import { getTripSegmentProgress, type TripSegmentProgress } from "$lib/trip-progress";
 	import { MapPin } from "@lucide/svelte";
 
-	import type { TripSegmentProgress, TripStop, TripState } from "$lib/types/trip";
+	import type { TripStop, TripState } from "$lib/types/trip";
 	import type { PageData } from "./$types";
 
 	const TRIP_STATE_REFRESH_MS = 10_000;
@@ -131,10 +133,10 @@
 	function getSegmentStartIndex(
 		stops: TripStop[],
 		lastDepartedIndex: number,
-		progress: TripSegmentProgress | null
+		segmentProgress: TripSegmentProgress | null
 	) {
 		if (
-			progress === null ||
+			segmentProgress === null ||
 			lastDepartedIndex < 0 ||
 			lastDepartedIndex >= stops.length - 1
 		) {
@@ -148,14 +150,14 @@
 		index: number,
 		lastDepartedIndex: number,
 		activeSegmentStartIndex: number,
-		progress: TripSegmentProgress | null
+		segmentProgress: TripSegmentProgress | null
 	) {
 		if (index < lastDepartedIndex) {
 			return 100;
 		}
 
-		if (progress !== null && index === activeSegmentStartIndex) {
-			return Math.round(progress * 100);
+		if (segmentProgress !== null && index === activeSegmentStartIndex) {
+			return Math.round(segmentProgress * 100);
 		}
 
 		return 0;
@@ -227,7 +229,7 @@
 		initialData: {
 			delay: data.trip.delay,
 			departedStationId: data.trip.departedStationId,
-			progress: data.trip.progress
+			vehiclePosition: data.trip.vehiclePosition
 		},
 		staleTime: TRIP_STATE_REFRESH_MS,
 		gcTime: TRIP_STATE_CACHE_MS,
@@ -239,27 +241,40 @@
 		tripStateQuery.data ?? {
 			delay: data.trip.delay,
 			departedStationId: data.trip.departedStationId,
-			progress: data.trip.progress
+			vehiclePosition: data.trip.vehiclePosition
 		}
 	);
 	const lastDepartedIndex = $derived(getLastDepartedIndex(data.trip.stops, liveTripState));
+	const segmentProgress = $derived(
+		getTripSegmentProgress(
+			data.trip.stops,
+			lastDepartedIndex,
+			liveTripState.vehiclePosition
+		)
+	);
 	const activeSegmentStartIndex = $derived(
 		getSegmentStartIndex(
 			data.trip.stops,
 			lastDepartedIndex,
-			liveTripState.progress
+			segmentProgress
 		)
 	);
-	const scrollTargetIndex = $derived(
-		lastDepartedIndex < 0 ? -1 : Math.max(lastDepartedIndex - 1, 0)
-	);
+	const scrollTargetIndex = $derived(lastDepartedIndex);
 	const tripStops = $derived(buildRenderedTripStops(data.trip.stops, liveTripState));
 
 	let tripContentElement = $state<HTMLElement | null>(null);
 	let autoScrolledTripId = $state<string | null>(null);
 
+	function waitForNextPaint() {
+		return new Promise<void>((resolve) => {
+			requestAnimationFrame(() => resolve());
+		});
+	}
+
 	async function scrollLastDepartedStopIntoView() {
 		await tick();
+		await waitForNextPaint();
+		await waitForNextPaint();
 
 		if (!tripContentElement) {
 			return;
@@ -273,14 +288,30 @@
 			return;
 		}
 
-		const containerRect = tripContentElement.getBoundingClientRect();
-		const targetRect = targetElement.getBoundingClientRect();
+		const scrollMarginTop = Number.parseFloat(getComputedStyle(targetElement).scrollMarginTop);
+		const targetTop = targetElement.getBoundingClientRect().top + window.scrollY;
 
-		tripContentElement.scrollTo({
-			top: tripContentElement.scrollTop + targetRect.top - containerRect.top,
+		window.scrollTo({
+			top: Math.max(
+				0,
+				targetTop - (Number.isFinite(scrollMarginTop) ? scrollMarginTop : 0)
+			),
 			behavior: "auto"
 		});
+
 		autoScrolledTripId = data.trip.id;
+	}
+
+	if (browser) {
+		afterNavigate(() => {
+			if (scrollTargetIndex < 0) {
+				return;
+			}
+
+			autoScrolledTripId = null;
+			disableScrollHandling();
+			void scrollLastDepartedStopIntoView();
+		});
 	}
 
 	$effect(() => {
@@ -352,7 +383,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.trip.line} {data.trip.headsign} | AIBus</title>
+	<title>{data.trip.line} {data.trip.headsign} | bAIbus</title>
 	<meta
 		name="description"
 		content={i18n.messages.trip.metaDescription(data.trip.line, data.trip.headsign)}
@@ -360,126 +391,127 @@
 </svelte:head>
 
 <div class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
-	<div class="mx-auto flex h-dvh max-w-screen-sm flex-col overflow-x-hidden">
-		<div class="route-transition-shell min-h-0 flex flex-1 flex-col overflow-x-hidden">
-			<main bind:this={tripContentElement} class="min-h-0 flex-1 overflow-y-auto pb-8">
-				<section aria-labelledby="trip-heading" class="px-6">
-					<PageHeader>
-						<div class="flex min-w-0 flex-1 items-center gap-4">
-							<BackButton href={data.trip.backLink} aria-label={data.trip.backText} />
+	<div class="mx-auto min-h-dvh max-w-screen-sm overflow-x-hidden">
+		<PageHeader>
+			<div class="flex min-w-0 flex-1 items-center gap-4">
+				<BackButton href={data.trip.backLink} aria-label={data.trip.backText} />
 
-							<div class="flex min-w-0 items-center gap-4">
-								<LineNumber
-									line={data.trip.line}
-								/>
+				<div class="flex min-w-0 items-center gap-4">
+					<LineNumber
+						line={data.trip.line}
+					/>
 
-								<div class="min-w-0">
-									<Heading
-										as="h1"
-										id="trip-heading"
-										class="truncate"
-									>
-										{data.trip.headsign}
-									</Heading>
-								</div>
-							</div>
-						</div>
-						<IconAction
-							href={data.trip.mapLink}
-							target="_blank"
-							rel="noreferrer"
-							aria-label={i18n.messages.trip.openOnMap}
+					<div class="min-w-0">
+						<Heading
+							as="h1"
+							id="trip-heading"
+							class="truncate"
 						>
-							<MapPin class="size-5" strokeWidth={2.2} />
-						</IconAction>
-					</PageHeader>
+							{data.trip.headsign}
+						</Heading>
+					</div>
+				</div>
+			</div>
+			<IconAction
+				href={data.trip.mapLink}
+				target="_blank"
+				rel="noreferrer"
+				aria-label={i18n.messages.trip.openOnMap}
+			>
+				<MapPin class="size-5" strokeWidth={2.2} />
+			</IconAction>
+		</PageHeader>
 
-					<div class="relative mt-8">
-							{#each tripStops as stop, index}
-								{@const lineFillPercent = getStopLineFillPercent(
-									index,
-									lastDepartedIndex,
-									activeSegmentStartIndex,
-									liveTripState.progress
-								)}
-								<div
-									class="relative pb-11 pl-11 last:pb-0"
-									data-last-departed-stop={index === scrollTargetIndex ? "true" : undefined}
-								>
-								{#if index < tripStops.length - 1}
+		<main
+			bind:this={tripContentElement}
+			class="route-transition-shell mt-[var(--app-header-offset)] mb-[var(--app-bottom-nav-offset)] min-h-[var(--app-content-min-height)] pb-8"
+		>
+			<section aria-labelledby="trip-heading" class="px-6 pt-8">
+				<div class="relative">
+					{#each tripStops as stop, index}
+						{@const lineFillPercent = getStopLineFillPercent(
+							index,
+							lastDepartedIndex,
+							activeSegmentStartIndex,
+							segmentProgress
+						)}
+						<div
+							class="relative scroll-mt-24 pb-11 pl-11 last:pb-0"
+							data-last-departed-stop={index === scrollTargetIndex ? "true" : undefined}
+						>
+						{#if index < tripStops.length - 1}
+							<div
+								class="absolute left-2 top-3 h-full w-1 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-800"
+								aria-hidden="true"
+							>
+								{#if lineFillPercent > 0}
 									<div
-										class="absolute left-2 top-3 h-full w-1 -translate-x-1/2 rounded-full bg-slate-200 dark:bg-slate-800"
-										aria-hidden="true"
-									>
-										{#if lineFillPercent > 0}
-											<div
-												class="absolute inset-x-0 top-0 rounded-full bg-blue-600"
-												style={`height: ${lineFillPercent}%`}
-											></div>
+										class="absolute inset-x-0 top-0 rounded-full bg-blue-600"
+										style={`height: ${lineFillPercent}%`}
+									></div>
+								{/if}
+							</div>
+						{/if}
+
+						<div
+							class="absolute left-0 top-1 flex size-4 items-center justify-center"
+							aria-hidden="true"
+						>
+							<div
+								class={`rounded-full ${getStopDotClass(index, tripStops.length, lastDepartedIndex)}`}
+							></div>
+						</div>
+
+						<div class={`flex items-start justify-between gap-3 ${stop.status === "past" ? "opacity-70" : ""}`}>
+							<div class="min-w-0 flex-1">
+								<p class={`font-extrabold tracking-tight ${getStopTitleClass(stop)}`}>
+									{stop.name}
+								</p>
+
+								{#if stop.note || stop.underMinuteNotePrefix || stop.delayLabel}
+									<div class="mt-2 flex flex-wrap items-center gap-2">
+										{#if stop.underMinuteNotePrefix}
+											<p class={`text-base font-semibold ${getStopNoteClass(stop)}`}>
+												{stop.underMinuteNotePrefix}
+												<span class="ml-1 inline-flex items-center gap-[0.06em] align-middle">
+													<LessThanValue />
+													<span>{i18n.messages.trip.arrivingLessThanMinuteUnit}</span>
+												</span>
+											</p>
+										{:else if stop.note}
+											<p class={`text-base font-semibold ${getStopNoteClass(stop)}`}>
+												{stop.note}
+											</p>
+										{/if}
+
+										{#if stop.delayLabel}
+											<span
+												class="rounded-md bg-rose-100 px-2 py-1 text-sm font-bold text-rose-700 dark:bg-rose-500/15 dark:text-rose-200"
+											>
+												{stop.delayLabel}
+											</span>
 										{/if}
 									</div>
 								{/if}
-
-								<div
-									class="absolute left-0 top-1 flex size-4 items-center justify-center"
-									aria-hidden="true"
-								>
-									<div
-										class={`rounded-full ${getStopDotClass(index, tripStops.length, lastDepartedIndex)}`}
-									></div>
-								</div>
-
-								<div class={`flex items-start justify-between gap-3 ${stop.status === "past" ? "opacity-70" : ""}`}>
-									<div class="min-w-0 flex-1">
-										<p class={`font-extrabold tracking-tight ${getStopTitleClass(stop)}`}>
-											{stop.name}
-										</p>
-
-										{#if stop.note || stop.underMinuteNotePrefix || stop.delayLabel}
-											<div class="mt-2 flex flex-wrap items-center gap-2">
-												{#if stop.underMinuteNotePrefix}
-													<p class={`text-base font-semibold ${getStopNoteClass(stop)}`}>
-														{stop.underMinuteNotePrefix}
-														<span class="ml-1 inline-flex items-center gap-[0.06em] align-middle">
-															<LessThanValue />
-															<span>{i18n.messages.trip.arrivingLessThanMinuteUnit}</span>
-														</span>
-													</p>
-												{:else if stop.note}
-													<p class={`text-base font-semibold ${getStopNoteClass(stop)}`}>
-														{stop.note}
-													</p>
-												{/if}
-
-												{#if stop.delayLabel}
-													<span
-														class="rounded-md bg-rose-100 px-2 py-1 text-sm font-bold text-rose-700 dark:bg-rose-500/15 dark:text-rose-200"
-													>
-														{stop.delayLabel}
-													</span>
-												{/if}
-											</div>
-										{/if}
-									</div>
-
-									<div class="min-w-16 shrink-0 text-right">
-										<p class={`text-xl font-extrabold tracking-tight ${getStopTimeClass(stop)}`}>
-											{stop.primaryTime}
-										</p>
-
-										{#if stop.secondaryTime}
-											<p class="mt-1 text-sm font-medium text-slate-500 line-through dark:text-slate-400">
-												{stop.secondaryTime}
-											</p>
-										{/if}
-									</div>
-								</div>
 							</div>
-						{/each}
-					</div>
-				</section>
-			</main>
-		</div>
+
+							<div class="min-w-16 shrink-0 text-right">
+								<p class={`text-xl font-extrabold tracking-tight ${getStopTimeClass(stop)}`}>
+									{stop.primaryTime}
+								</p>
+
+								{#if stop.secondaryTime}
+									<p class="mt-1 text-sm font-medium text-slate-500 line-through dark:text-slate-400">
+										{stop.secondaryTime}
+									</p>
+								{/if}
+							</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		</main>
 
 		<AppBottomNav />
 	</div>

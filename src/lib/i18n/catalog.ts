@@ -9,6 +9,7 @@ export const catalog = {
 			placeholder: "Search for a station or route",
 			recentHeading: "Recent searches",
 			emptyRecent: "Your recent searches will appear here.",
+			back: "Back",
 			close: "Close search",
 			lastSearched: (relative: string) => `Last searched ${relative}`
 		},
@@ -27,6 +28,9 @@ export const catalog = {
 		home: {
 			title: "Home",
 			metaDescription: "Transit home screen with nearby stops and favorites.",
+			searchPlaceholder: "Search for a station",
+			searchingStations: "Searching stations...",
+			noStationSearchResults: "No stations matched that search.",
 			nearbyHeading: "Nearby Stops",
 			favoritesHeading: "Favorites",
 			findingStops: "Finding stops near you...",
@@ -120,6 +124,7 @@ export const catalog = {
 		errors: {
 			stationNotFound: "Station not found",
 			tripNotFound: "Trip not found",
+			stationSearchLoad: "Unable to load stations right now.",
 			invalidStationId: "Invalid station ID",
 			invalidLatitudeCoordinate: "Invalid latitude coordinate",
 			invalidLongitudeCoordinate: "Invalid longitude coordinate",
@@ -140,6 +145,7 @@ export const catalog = {
 			placeholder: "Vyhľadajte zastávku alebo linku",
 			recentHeading: "Nedávne vyhľadávania",
 			emptyRecent: "Vaše nedávne vyhľadávania sa zobrazia tu.",
+			back: "Späť",
 			close: "Zavrieť vyhľadávanie",
 			lastSearched: (relative: string) => `Naposledy hľadané ${relative}`
 		},
@@ -158,6 +164,9 @@ export const catalog = {
 		home: {
 			title: "Domov",
 			metaDescription: "Domovská obrazovka dopravy so zastávkami v okolí a obľúbenými.",
+			searchPlaceholder: "Vyhľadajte zastávku",
+			searchingStations: "Vyhľadávam zastávky...",
+			noStationSearchResults: "Žiadne zastávky nezodpovedajú tomuto vyhľadávaniu.",
 			nearbyHeading: "Zastávky v okolí",
 			favoritesHeading: "Obľúbené",
 			findingStops: "Vyhľadávam zastávky vo vašom okolí...",
@@ -252,6 +261,7 @@ export const catalog = {
 		errors: {
 			stationNotFound: "Zastávka sa nenašla",
 			tripNotFound: "Spoj sa nenašiel",
+			stationSearchLoad: "Zastávky sa momentálne nepodarilo načítať.",
 			invalidStationId: "Neplatné ID zastávky",
 			invalidLatitudeCoordinate: "Neplatná zemepisná šírka",
 			invalidLongitudeCoordinate: "Neplatná zemepisná dĺžka",

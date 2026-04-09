@@ -1,7 +1,7 @@
 	<script lang="ts">
 		import { page } from "$app/state";
 		import { browser } from "$app/environment";
-		import { onNavigate } from "$app/navigation";
+		import { afterNavigate, disableScrollHandling, onNavigate } from "$app/navigation";
 		import { QueryClientProvider } from "@tanstack/svelte-query";
 
 		import { createAppQueryClient } from "$lib/query/client";
@@ -42,6 +42,10 @@
 
 		function isDetailPath(pathname: string) {
 			return pathname.startsWith("/stations/") || pathname.startsWith("/trips/");
+		}
+
+		function isTripDetailPath(pathname: string) {
+			return pathname.startsWith("/trips/");
 		}
 
 		function getDetailTransitionKind(
@@ -119,6 +123,17 @@
 		}
 
 		if (browser) {
+			afterNavigate(({ to }) => {
+				const toPathname = to?.url.pathname;
+
+				if (!toPathname || isTripDetailPath(toPathname)) {
+					return;
+				}
+
+				disableScrollHandling();
+				window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+			});
+
 			onNavigate((navigation) => {
 				const transitionDocument = getViewTransitionDocument();
 				const fromPathname = navigation.from?.url.pathname;

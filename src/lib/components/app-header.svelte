@@ -2,38 +2,34 @@
 	import { page } from "$app/state";
 	import favicon from "$lib/assets/favicon.svg";
 	import PageHeader from "$lib/components/page-header.svelte";
+	import SearchButton from "$lib/components/search-button.svelte";
 	import { Heading } from "$lib/components/ui/heading";
 	import { getI18n } from "$lib/i18n";
-	import { Search } from "@lucide/svelte";
+	import type { SearchOverlayConfig } from "../search-overlay.svelte.ts";
 
 	const i18n = $derived(getI18n(page.data.locale));
 	let {
 		searchLabel = i18n.messages.header.search,
-		showSearchButton = true,
-		onSearchClick
+		showSearchButton = false,
+		searchOverlayConfig
 	}: {
 		searchLabel?: string;
 		showSearchButton?: boolean;
-		onSearchClick?: (trigger: HTMLButtonElement) => void | Promise<void>;
+		searchOverlayConfig?: SearchOverlayConfig;
 	} = $props();
 </script>
 
 <PageHeader>
 	<div class="flex items-center gap-4">
-		<img src={favicon} alt="AIBus" class="size-8 rounded-md object-contain" />
+		<img src={favicon} alt="bAIbus" class="size-8 rounded-md object-contain" />
 		<Heading as="h1" size="3xl">
-			AIBus
+			bAIbus
 		</Heading>
 	</div>
-	{#if showSearchButton}
-		<button
-			type="button"
-			class="flex size-10 items-center justify-center rounded-full text-slate-500 dark:text-slate-400"
+	{#if showSearchButton || searchOverlayConfig}
+		<SearchButton
 			aria-label={searchLabel}
-			onclick={(event) =>
-				void onSearchClick?.(event.currentTarget as HTMLButtonElement)}
-		>
-			<Search class="size-7" strokeWidth={2.2} />
-		</button>
+			overlayConfig={searchOverlayConfig}
+		/>
 	{/if}
 </PageHeader>

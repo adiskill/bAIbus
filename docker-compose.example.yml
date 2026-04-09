@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      IDSBK_API_KEY: ${IDSBK_API_KEY}
+      IDSBK_SESSION: ${IDSBK_SESSION}
+      VALKEY_URL: redis://valkey:6379
+      VALKEY_PREFIX: ${VALKEY_PREFIX:-bAIbus}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

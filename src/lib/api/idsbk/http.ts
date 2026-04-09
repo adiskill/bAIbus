@@ -89,10 +89,6 @@ export async function fetchIdsbkJson(
 			} satisfies IdbskRequestDebugEntry)
 		: null;
 
-	if (debug) {
-		console.debug("[idsbk] upstream response", debug);
-	}
-
 	return {
 		data,
 		debug,

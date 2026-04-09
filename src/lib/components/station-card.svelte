@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { BusFront, ChevronRight, MapPinned, SquareM, TramFront } from "@lucide/svelte";
+	import type { HTMLAnchorAttributes } from "svelte/elements";
 
 	import { PressableCard } from "$lib/components/ui/card";
 	import { Heading } from "$lib/components/ui/heading";
@@ -10,12 +11,14 @@
 		distance,
 		href,
 		name,
+		onclick,
 		mode
 	}: {
 		class?: string;
 		distance?: string;
 		href: string;
 		name: string;
+		onclick?: HTMLAnchorAttributes["onclick"];
 		mode?: StationMode;
 	} = $props();
 
@@ -59,6 +62,7 @@
 	href={href}
 	cardClass={className}
 	contentClass="flex items-center justify-between gap-3"
+	{onclick}
 >
 	{@const meta = getModeMeta(mode)}
 	<div class="flex min-w-0 items-center gap-3">
